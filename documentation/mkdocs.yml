@@ -1,0 +1,65 @@
+site_name: Highly loaded distributed service project
+
+nav:
+  - About: index.md
+  - Changelog: changelog.md
+
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.tabs.link
+    - content.code.annotation
+    - content.code.copy
+    - toc.follow
+  palette:
+    - scheme: default
+      toggle:
+        icon: material/toggle-switch-off-outline
+        name: Switch to dark mode
+      primary: indigo
+      accent: pink
+    - scheme: slate
+      toggle:
+        icon: material/toggle-switch
+        name: Switch to light mode
+      primary: indigo
+      accent: pink
+
+extra:
+  social:
+    - icon: fontawesome/brands/linkedin
+      link: https://www.linkedin.com/in/vasyl-kartychak-63660b220/
+
+markdown_extensions:
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.details:
+  - pymdownx.critic:
+  - pymdownx.caret:
+  - pymdownx.keys:
+  - pymdownx.mark:
+  - pymdownx.tilde:
+  - admonition:
+  - tables:
+  - attr_list:
+  - md_in_html:
+  - footnotes:
+  - def_list:
+  - toc:
+      toc_depth: 2
+
+copyright: |
+  &copy; 2026 <a href="https://github.com/smartguy-coder/PrototypeHighlyLoadedDistributedService"  target="_blank" rel="noopener">Source code</a>

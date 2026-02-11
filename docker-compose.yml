@@ -1,0 +1,13 @@
+services:
+  documentation:
+    image: squidfunk/mkdocs-material:latest
+    container_name: mkdocs
+    hostname: mkdocs
+    command: serve --dev-addr=0.0.0.0:8010 --watch-theme
+    restart: unless-stopped
+    ports:
+      - "8010:8010"
+    volumes:
+      - ./documentation:/docs:ro
+#    profiles:
+#      - docs

@@ -38,6 +38,9 @@ class User(CreatedAtUpdatedAtMixin, AbstractUser):
             ),
         ]
 
+    def __str__(self):
+        return self.email or str(self.phone) or f"User {self.pk}"
+
     def clean(self):
         super().clean()
         if self.email:

@@ -221,3 +221,6 @@ Accounting department periodically processes:
 - MONO
 - STRIPE
 - multy currency
+- cassandra
+- keycloak (?)
+- precommit

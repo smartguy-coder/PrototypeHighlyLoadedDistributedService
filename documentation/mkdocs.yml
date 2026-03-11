@@ -2,6 +2,7 @@ site_name: Highly loaded distributed service project
 
 nav:
   - About: index.md
+  - Running project: running_project.md
   - Changelog: changelog.md
 
 theme:

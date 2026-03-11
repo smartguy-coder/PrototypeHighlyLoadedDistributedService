@@ -1,4 +1,5 @@
 from pathlib import Path
+from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -18,6 +19,9 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     # Third-party apps
     "phonenumber_field",
+    'drf_spectacular',
+    'rest_framework_simplejwt',
+    'rest_framework',
     # Local apps
     "apps.users",
 ]
@@ -96,3 +100,22 @@ AUTHENTICATION_BACKENDS = [
 # Phone Number Field Settings
 PHONENUMBER_DEFAULT_REGION = None  # Require country code (e.g., +380, +1)
 PHONENUMBER_DEFAULT_FORMAT = "E164"
+
+# DRF
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticatedOrReadOnly'
+    ],
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "AUTH_HEADER_TYPES": ('Bearer',)
+}

@@ -9,7 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## Storefront Catalog Service Frontend
 
 ### 0.1.0 - 2026-03-11
-PR
+[PR](https://github.com/smartguy-coder/PrototypeHighlyLoadedDistributedService/pull/3)
 
 #### Added
 - Initial frontend setup with React 19 + TypeScript + Vite 7

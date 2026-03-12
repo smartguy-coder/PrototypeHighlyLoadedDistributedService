@@ -12,7 +12,7 @@ class CustomUserManager(BaseUserManager):
             raise ValueError("User must have an email or phone number")
 
         if email:
-            email = self.normalize_email(email)
+            email = self.normalize_email(email).lower()
 
         extra_fields.setdefault("is_staff", False)
         extra_fields.setdefault("is_superuser", False)

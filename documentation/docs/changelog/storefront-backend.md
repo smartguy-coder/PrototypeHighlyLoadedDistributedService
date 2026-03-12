@@ -2,7 +2,24 @@
 
 Django REST API for storefront operations — user management, catalog, and orders.
 
-**Tech Stack:** Django 5, Django REST Framework, PostgreSQL
+**Tech Stack:** Django 6, Django REST Framework, PostgreSQL
+https://github.com/smartguy-coder/PrototypeHighlyLoadedDistributedService/pull/4
+
+---
+## 0.2.0 — 2026-03-11
+
+[:octicons-git-pull-request-16: PR #4](https://github.com/smartguy-coder/PrototypeHighlyLoadedDistributedService/pull/4)
+
+### :material-plus: Added
+
+- Set DRF
+- Set simplejwt endpoints (including custom email and phone auth)
+- added swagger
+
+### :material-bug: Fixed
+
+- saved user email in lower case.
+- small fix in EmailOrPhoneBackend.
 
 ---
 

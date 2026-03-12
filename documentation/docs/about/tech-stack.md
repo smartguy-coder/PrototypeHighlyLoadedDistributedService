@@ -4,18 +4,18 @@ Overview of current and planned technologies used in the project.
 
 ---
 
-## Current Stack
+## Current Stack (coming soon)
 
 Technologies already implemented and in use.
 
-| Category | Technology | Status |
-|----------|------------|--------|
-| **Documentation** | MkDocs + Material | ✅ Active |
-| **Containerization** | Docker, Docker Compose | ✅ Active |
+| Category | Technology                 | Status |
+|----------|----------------------------|--------|
+| **Documentation** | MkDocs + Material          | ✅ Active |
+| **Containerization** | Docker, Docker Compose     | ✅ Active |
 | **Frontend** | React 19, TypeScript, Vite | ✅ v0.1.0 |
-| **UI Library** | Material UI 7 | ✅ v0.1.0 |
-| **Backend** | Django 5, DRF | ✅ v0.1.0 |
-| **Database** | PostgreSQL 15 | ✅ Active |
+| **UI Library** | Material UI 7              | ✅ v0.1.0 |
+| **Backend** | Django 6, DRF              | ✅ v0.1.0 |
+| **Database** | PostgreSQL 18              | ✅ Active |
 
 ---
 
@@ -66,11 +66,12 @@ Technologies planned for future implementation.
 
 ### Frontend & Mobile
 
-| Technology | Purpose | Priority |
-|------------|---------|----------|
-| **React** | Customer web app | ✅ Done |
-| **Flutter** | Mobile apps (iOS, Android) | 🔴 High |
-| **WebSockets** | Real-time updates | 🔴 High |
+| Technology      | Purpose | Priority |
+|-----------------|---------|----------|
+| **React**       | Customer web app | ✅ Done |
+| **ReactNative** | Mobile apps (iOS, Android) | 🔴 High |
+| **Flet**        | Mobile apps (Android) | 🔴 High |
+| **WebSockets**  | Real-time updates | 🔴 High |
 
 ### ORMs & Database Tools
 

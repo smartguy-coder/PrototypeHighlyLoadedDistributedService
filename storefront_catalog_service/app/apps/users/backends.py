@@ -42,10 +42,10 @@ class EmailOrPhoneBackend(ModelBackend):
         try:
             if phone_number:
                 user = User.objects.get(
-                    Q(email__iexact=username) | Q(phone=phone_number)
+                    Q(email=username) | Q(phone=phone_number)
                 )
             else:
-                user = User.objects.get(email__iexact=username)
+                user = User.objects.get(email=username)
         except User.DoesNotExist:
             # Run password hashing to prevent timing attacks
             User().set_password(password)
@@ -59,7 +59,4 @@ class EmailOrPhoneBackend(ModelBackend):
         return None
 
     def get_user(self, user_id: int) -> User | None:
-        try:
-            return User.objects.get(pk=user_id)
-        except User.DoesNotExist:
-            return None
+        return User.objects.filter(pk=user_id).first()

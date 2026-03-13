@@ -1,9 +1,20 @@
 site_name: Highly loaded distributed service project
 
 nav:
-  - About: index.md
-  - Running project: running_project.md
-  - Changelog: changelog.md
+  - Home: index.md
+  - About:
+    - Overview: about/overview.md
+    - Architecture Diagrams: about/diagrams.md
+    - Tech Stack: about/tech-stack.md
+  - Getting Started:
+    - Quick Start: guides/quickstart.md
+    - Running Project:
+      - Local: running_project_local.md
+      - Production: running_project_prod.md
+  - Changelog:
+    - Overview: changelog/index.md
+    - Storefront Frontend: changelog/storefront-frontend.md
+    - Storefront Backend: changelog/storefront-backend.md
 
 theme:
   name: material
@@ -11,6 +22,8 @@ theme:
     - navigation.tabs
     - navigation.sections
     - navigation.top
+    - navigation.expand
+    - navigation.path
     - search.suggest
     - search.highlight
     - content.tabs.link
@@ -60,7 +73,8 @@ markdown_extensions:
   - footnotes:
   - def_list:
   - toc:
-      toc_depth: 2
+      permalink: true
+      toc_depth: 3
 
 copyright: |
   &copy; 2026 <a href="https://github.com/smartguy-coder/PrototypeHighlyLoadedDistributedService"  target="_blank" rel="noopener">Source code</a>

@@ -1,226 +1,83 @@
-# Description of the project
+# Highly Loaded Distributed Service
 
-## Overview
-The project is the implementation of the business model of an integrator of orders for the delivery of
-ready meals from cafes and restaurants,
-which are independent external businesses, to customers.
-
-Also, the integrator takes care of issues of delivery, payments, accounting of commissions,
-notifications of all parties, transactions.
+Welcome to the documentation for the **Food Delivery Integrator Platform**.
 
 ---
 
-## Architecture Diagram
+## What is this project?
 
-### High-Level System Overview
+This is a highly loaded distributed service that acts as an **integrator** for food delivery — connecting restaurants, customers, and couriers in a single platform.
 
 ```mermaid
 flowchart LR
-    Partners["🏪 Partners<br/>(Cafes/Restaurants)"]
-    Monolith["🏛️ Django Monolith<br/>Integrator"]
-    Users["👤 Customers"]
-    Payment["💳 Payment<br/>Gateway"]
-    Delivery["🚚 Delivery<br/>Service"]
-    Accounting["📊 Accounting"]
-
-    Partners -->|"Menu sync"| Monolith
-    Users -->|"Orders"| Monolith
-    Monolith -->|"Payment redirect"| Payment
-    Payment -->|"Confirmation"| Monolith
-    Monolith -->|"Order details"| Partners
-    Monolith -->|"Delivery request"| Delivery
-    Delivery -->|"Deliver to"| Users
-    Monolith -->|"Settlements"| Accounting
-    Accounting -->|"Payouts"| Partners
-    Accounting -->|"Payouts/Collection"| Delivery
-```
-
-### Detailed Component Architecture
-
-```mermaid
-flowchart TB
-    subgraph Partners["PARTNERS"]
-        Cafe1["Cafe 2"]
-        Cafe2["Restaurant 2"]
-        CafeN["Cafe 1"]
-    end
-
-    subgraph Monolith["DJANGO MONOLITH"]
-        API["REST API"]
-        MenuCatalog["Menu Catalog"]
-        OrderMgmt["Order Management"]
-        BalanceCtrl["Balance Control"]
-        Commission["Commission Accounting"]
-    end
-
-    subgraph Temporal["TEMPORAL.IO WORKFLOWS"]
-        OrderWF["Order Workflow"]
-        PaymentWF["Payment Workflow"]
-        DeliveryWF["Delivery Workflow"]
-        SettlementWF["Settlement Workflow"]
-    end
-
-    Cafe1 --> MenuCatalog
-    Cafe2 --> MenuCatalog
-    CafeN --> MenuCatalog
-    
-    API --> OrderMgmt
-    OrderMgmt --> OrderWF
-    OrderWF --> PaymentWF
-    PaymentWF --> DeliveryWF
-    DeliveryWF --> SettlementWF
-    
-    PaymentWF --> BalanceCtrl
-    BalanceCtrl --> Commission
-    Commission --> SettlementWF
-```
-
-### Order Flow Sequence
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant U as Customer
-    participant M as Monolith
-    participant T as Temporal
-    participant P as Payment Gateway
-    participant C as Cafe
-    participant D as Delivery Service
-    participant A as Accounting
-
-    U->>M: Create order
-    M->>T: Start Order Workflow
-    T->>P: Redirect to payment
-    P->>U: Payment page
-    U->>P: Pay online
-    P->>T: Payment callback (success)
-    T->>M: Update balance
-    T->>C: Send order details
-    C->>C: Prepare order
-    T->>D: Request courier (ETA based)
-    D->>C: Pickup order
-    D->>U: Deliver order
-    alt Cash payment
-        U->>D: Pay cash
-        D->>M: Report cash received
-    end
-    M->>A: Settlement data
-    A->>C: Payout (minus commission)
-    A->>D: Payout or cash collection
-```
-
-### Financial Flow
-
-```mermaid
-flowchart LR
-    subgraph Income["INCOME"]
-        Online["Online Payments"]
-        Cash["Cash from Couriers"]
-    end
-
-    subgraph Monolith["MONOLITH"]
-        Balance["Balance Control"]
-        Comm["Commission Calculator"]
-    end
-
-    subgraph Outflow["OUTFLOW"]
-        CafePay["Cafe Payouts"]
-        DeliveryPay["Delivery Payouts"]
-        Platform["Platform Revenue"]
-    end
-
-    Online --> Balance
-    Cash --> Balance
-    Balance --> Comm
-    Comm --> CafePay
-    Comm --> DeliveryPay
-    Comm --> Platform
+    R["🏪 Restaurants"] --> P["🚀 Platform"]
+    P --> C["👤 Customers"]
+    P --> D["🚴 Couriers"]
 ```
 
 ---
 
-## Business Flow Description
+## Quick Links
 
-### 1. Menu Synchronization
-Partners (cafes and restaurants) synchronize their available dishes through the integrator's API. Only items available for delivery are published to the catalog.
+<div class="grid cards" markdown>
 
-### 2. Order Creation
-Customer selects dishes from the catalog and creates an order. The monolith initiates a **Temporal.io Workflow** to manage the order through its entire lifecycle.
+-   :material-information-outline:{ .lg .middle } **About the Project**
 
-### 3. Payment Processing
-- Customer is redirected to payment gateway (Mono/Stripe)
-- Upon successful payment, the gateway sends a callback
-- Funds are recorded in the integrator's balance
+    ---
 
-### 4. Order Handoff to Partner
-After payment confirmation, the order is automatically transmitted to the corresponding cafe/restaurant for preparation.
+    Learn about the business model, goals, and how the platform works
 
-### 5. Delivery Dispatch
-Simultaneously, a courier is dispatched with arrival time calculated to match order readiness.
+    [:octicons-arrow-right-24: Overview](about/overview.md)
 
-### 6. Delivery Execution
-- Courier picks up the order and delivers to customer
-- If online payment was not completed — courier collects cash payment
+-   :material-chart-box-outline:{ .lg .middle } **Architecture Diagrams**
 
-### 7. Financial Accounting
-- Monolith tracks all received funds (online + cash)
-- Automatic commission calculation for all parties
+    ---
 
-### 8. Partner Settlements
-Accounting department periodically processes:
-- **Payouts to cafes/restaurants** — for completed orders minus integrator commission
-- **Delivery service settlements** — payout for deliveries or collection of excess cash holdings
+    Visual diagrams of system architecture, order flow, and financial flow
+
+    [:octicons-arrow-right-24: Diagrams](about/diagrams.md)
+
+-   :material-tools:{ .lg .middle } **Tech Stack**
+
+    ---
+
+    Current and planned technologies used in the project
+
+    [:octicons-arrow-right-24: Tech Stack](about/tech-stack.md)
+
+-   :material-rocket-launch:{ .lg .middle } **Getting Started**
+
+    ---
+
+    Set up your development environment and run the project
+
+    [:octicons-arrow-right-24: Quick Start](guides/quickstart.md)
+
+</div>
 
 ---
 
-## Tech stack (actual)
-- Project is fully dockerized
-- MkDocs documentation service
+## Key Features
 
+| Feature | Description |
+|---------|-------------|
+| **Multi-tenant** | Support for multiple restaurants on single platform |
+| **Real-time tracking** | Live order and courier tracking |
+| **Multiple payment methods** | Online (Mono, Stripe) and cash payments |
+| **Workflow orchestration** | Temporal.io for reliable order processing |
+| **Microservices ready** | Designed for horizontal scaling |
 
-## Tech stack (planned)
-- Django - as a main monolith backend for 
-- FastAPI
-- PostgreSQL
-- PostgreSQL + geo (for tracking)
-- MongoDB
-- Cockroach
-- Cloudflare
-- Kafka
-- Temporalio
-- S3
-- React
-- RabbitMQ
-- Redis
-- FastStream
-- TaskIQ
-- Celery
-- Celerybeat
-- Elastic
-- Clickhouse
-- gRPC
-- sockets
-- Flutter
-- video streaming (?)
-- prometheus
-- grafana
-- databasus (https://github.com/databasus/databasus)
-- kanchi (https://github.com/getkanchi/kanchi)
-- DjangoTenants
-- SQLAlchemy
-- Tortouse ORM
-- pg_bouncer
-- Kubernetes os Docker swarm
-- SQLAdmin
-- sentry
-- nginx
-- DRF
-- django-ninja
-- CI/CD
-- testing
-- MONO
-- STRIPE
-- multy currency
-- cassandra
-- keycloak (?)
-- precommit
+---
+
+## Project Status
+
+| Component | Status     |
+|-----------|------------|
+| Documentation | ✅ Active   |
+| Storefront Frontend | ✅ v0.1.0   |
+| Storefront Backend | ✅ v0.2.0   |
+| Order Service | 🚧 Planned |
+| Payment Service | 🚧 Planned |
+| Delivery Service | 🚧 Planned |
+
+See [Changelog](changelog/index.md) for detailed version history.

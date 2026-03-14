@@ -3,7 +3,17 @@
 Django REST API for storefront operations — user management, catalog, and orders.
 
 **Tech Stack:** Django 6, Django REST Framework, PostgreSQL
-https://github.com/smartguy-coder/PrototypeHighlyLoadedDistributedService/pull/4
+
+---
+## 0.3.0 — 2026-03-13
+
+[:octicons-git-pull-request-16: PR #5](https://github.com/smartguy-coder/PrototypeHighlyLoadedDistributedService/pull/5)
+
+### :material-plus: Added
+
+- The service was dockerized
+- get and create user endpoints
+- Makefile
 
 ---
 ## 0.2.0 — 2026-03-11

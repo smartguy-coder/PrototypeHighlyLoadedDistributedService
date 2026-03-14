@@ -1,7 +1,8 @@
 from drf_spectacular.utils import extend_schema, OpenApiExample
+from rest_framework import generics, permissions
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from apps.users.serializers import EmailOrPhoneTokenObtainSerializer
+from apps.users.serializers import EmailOrPhoneTokenObtainSerializer, UserSerializer, UserCreateSerializer
 
 
 class EmailOrPhoneTokenObtainPairView(TokenObtainPairView):
@@ -83,3 +84,68 @@ Returns JWT token pair:
     )
     def post(self, request, *args, **kwargs):
         return super().post(request, *args, **kwargs)
+
+
+class UserCreateView(generics.CreateAPIView):
+    serializer_class = UserCreateSerializer
+    permission_classes = [permissions.AllowAny]
+
+    @extend_schema(
+        summary="Register new user",
+        description="""
+Create a new user account.
+
+## Required Fields
+
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `email` | string | No* | User's email address |
+| `phone` | string | No* | Phone number in E.164 format |
+| `password` | string | Yes | Password (min 8 characters) |
+| `first_name` | string | No | User's first name |
+| `last_name` | string | No | User's last name |
+
+\* At least one of `email` or `phone` is required.
+        """,
+        tags=["User"],
+    )
+    def post(self, request, *args, **kwargs):
+        return super().post(request, *args, **kwargs)
+
+
+class CurrentUserView(generics.RetrieveUpdateAPIView):
+    """
+    Retrieve or update the currently authenticated user's profile.
+    
+    GET: Returns the current user's profile information.
+    PATCH/PUT: Updates the current user's profile (email, phone, first_name, last_name).
+    """
+    
+    serializer_class = UserSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_object(self):
+        return self.request.user
+
+    @extend_schema(
+        summary="Get current user profile",
+        description="Retrieve the profile information of the currently authenticated user.",
+        tags=["User"],
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+    @extend_schema(
+        summary="Update current user profile",
+        tags=["User"],
+    )
+    def patch(self, request, *args, **kwargs):
+        return super().patch(request, *args, **kwargs)
+
+    @extend_schema(
+        summary="Replace current user profile",
+        tags=["User"],
+    )
+    def put(self, request, *args, **kwargs):
+        return super().put(request, *args, **kwargs)

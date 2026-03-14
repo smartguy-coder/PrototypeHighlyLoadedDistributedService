@@ -11,3 +11,19 @@ services:
       - ./documentation:/docs:ro
 #    profiles:
 #      - docs
+
+  storefront_catalog_service:
+    container_name: storefront_catalog_service
+    hostname: storefront_catalog_service
+    ports:
+      - "8000:8000"
+    build:
+      dockerfile: Dockerfile
+      context: ./storefront_catalog_service
+    restart: unless-stopped
+    command: |
+      sh -c "
+      uv run python manage.py runserver 0.0.0.0:8000
+      "
+    volumes:
+      - ./storefront_catalog_service/app:/app

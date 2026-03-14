@@ -119,3 +119,13 @@ SIMPLE_JWT = {
     "BLACKLIST_AFTER_ROTATION": True,
     "AUTH_HEADER_TYPES": ('Bearer',)
 }
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Storefront Catalog API',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'TAGS': [
+        {'name': 'Authentication', 'description': 'JWT authentication endpoints'},
+    ],
+    'OPERATION_SORTER': 'alpha',
+}

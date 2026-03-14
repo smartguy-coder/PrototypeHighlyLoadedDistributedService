@@ -80,7 +80,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
         if not value:
             return None
         value = value.lower().strip()
-        if User.objects.filter(email__iexact=value).exists():
+        if User.objects.filter(email=value).exists():
             raise serializers.ValidationError("User with this email already exists.")
         return value
 

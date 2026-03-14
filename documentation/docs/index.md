@@ -75,7 +75,7 @@ flowchart LR
 |-----------|------------|
 | Documentation | ✅ Active   |
 | Storefront Frontend | ✅ v0.1.0   |
-| Storefront Backend | ✅ v0.2.0   |
+| Storefront Backend | ✅ v0.3.0   |
 | Order Service | 🚧 Planned |
 | Payment Service | 🚧 Planned |
 | Delivery Service | 🚧 Planned |

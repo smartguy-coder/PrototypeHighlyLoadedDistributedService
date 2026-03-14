@@ -2,30 +2,16 @@
 
 This section describes how to run different components of the project.
 
-## Documentation (MkDocs)
+## Storefront Catalog Service (Django), Documentation (MkDocs)
 
-To run the documentation server:
+To run all dockerized services:
 
 ```bash
-docker compose up documentation
-```
-or
-```bash
-docker compose up -d
+make up
 ```
 
 The documentation will be available at `http://localhost:8010`.
-
-## Django (Storefront Catalog Service)
-
-To run the Django server:
-
-```bash
-cd storefront_catalog_service/app
-python manage.py runserver
-```
-
-> **Note:** Make sure you have activated your Python virtual environment and installed all dependencies before running.
+The storefront_catalog_service will be available at `http://localhost:8000`.
 
 ## React Frontend (Storefront Catalog Service)
 

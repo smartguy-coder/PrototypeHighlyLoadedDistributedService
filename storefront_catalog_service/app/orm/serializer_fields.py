@@ -60,11 +60,14 @@ class PhoneNumberField(serializers.CharField):
 
         return formatted.lstrip('+')
 
-    def to_representation(self, value: str) -> str:
+    def to_representation(self, value) -> str | None:
         if not value:
             return value
 
-        if value and not value.startswith('+'):
-            return f'+{value}'
+        # Convert PhoneNumber object to string if needed
+        str_value = str(value)
 
-        return value
+        if str_value and not str_value.startswith('+'):
+            return f'+{str_value}'
+
+        return str_value

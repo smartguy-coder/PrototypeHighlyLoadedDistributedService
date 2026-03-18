@@ -3,13 +3,15 @@ from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from orm import PhoneNumberField
+
 User = get_user_model()
 
 
 class EmailOrPhoneTokenObtainSerializer(serializers.Serializer):
     """
     JWT token serializer that supports login via email or phone.
-    
+
     Usage:
         POST /api/v1/auth/token/
         {"email": "user@example.com", "password": "secret"}
@@ -17,7 +19,7 @@ class EmailOrPhoneTokenObtainSerializer(serializers.Serializer):
         {"phone": "+380501234567", "password": "secret"}
     """
     email = serializers.EmailField(required=False, allow_blank=True)
-    phone = serializers.CharField(required=False, allow_blank=True)
+    phone = PhoneNumberField(required=False, allow_blank=True)
     password = serializers.CharField(write_only=True)
 
     def validate(self, attrs):
@@ -61,9 +63,9 @@ class UserCreateSerializer(serializers.ModelSerializer):
     Serializer for user registration.
     """
     email = serializers.EmailField(required=False, allow_blank=True, allow_null=True)
-    phone = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    phone = PhoneNumberField(required=False, allow_blank=True, allow_null=True)
     password = serializers.CharField(write_only=True)
-    
+
     class Meta:
         model = User
         fields = [
@@ -85,6 +87,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
         return value
 
     def validate_phone(self, value):
+        """Check phone uniqueness after normalization."""
         if not value:
             return None
         if User.objects.filter(phone=value).exists():
@@ -109,12 +112,16 @@ class UserCreateSerializer(serializers.ModelSerializer):
         return User.objects.create_user(**validated_data)
 
 
+# =============================================================================
+# User Profile Serializers
+# =============================================================================
+
 class UserSerializer(serializers.ModelSerializer):
     """
     Serializer for user profile (read/update).
     """
     email = serializers.EmailField(required=False, allow_blank=True, allow_null=True)
-    phone = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    phone = PhoneNumberField(required=False, allow_blank=True, allow_null=True)
     
     class Meta:
         model = User
@@ -146,11 +153,12 @@ class UserSerializer(serializers.ModelSerializer):
             return None
         value = value.lower().strip()
         user = self.instance
-        if User.objects.filter(email__iexact=value).exclude(pk=user.pk).exists():
+        if User.objects.filter(email=value).exclude(pk=user.pk).exists():
             raise serializers.ValidationError("User with this email already exists.")
         return value
 
     def validate_phone(self, value):
+        """Check phone uniqueness after normalization, excluding current user."""
         if not value:
             return None
         user = self.instance

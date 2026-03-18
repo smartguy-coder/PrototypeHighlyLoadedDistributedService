@@ -19,6 +19,8 @@ class CustomUserAdmin(UserAdmin):
     list_filter = (
         "is_active",
         "is_staff",
+        "is_email_verified",
+        "is_phone_verified",
     )
     search_fields = ("email", "phone", "first_name", "last_name")
     ordering = ("-created_at",)

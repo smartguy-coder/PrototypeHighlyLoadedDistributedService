@@ -125,7 +125,8 @@ SPECTACULAR_SETTINGS = {
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
     'TAGS': [
-        {'name': 'Authentication', 'description': 'JWT authentication endpoints'},
+        {'name': 'Authentication', 'description': 'Password-based JWT authentication'},
+        {'name': 'User', 'description': 'User management endpoints'},
     ],
     'OPERATION_SORTER': 'alpha',
 }

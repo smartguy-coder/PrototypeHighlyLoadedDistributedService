@@ -1,0 +1,109 @@
+# Pre-commit configuration for PrototypeHighlyLoadedDistributedService
+# Covers: storefront_catalog_service (Django), storefront_catalog_service_frontend (React/TS)
+
+default_language_version:
+  python: python3.12
+
+repos:
+  # =============================================================================
+  # General Hooks
+  # =============================================================================
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: ^.*\.(lock|svg)$
+      - id: end-of-file-fixer
+        exclude: ^.*\.(lock|svg)$
+      - id: check-yaml
+        args: [--allow-multiple-documents, --unsafe]
+        exclude: ^documentation/
+      - id: check-json
+        exclude: (lock\.json$|tsconfig.*\.json$)
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: check-merge-conflict
+      - id: detect-private-key
+
+  # =============================================================================
+  # Python Backend (storefront_catalog_service)
+  # =============================================================================
+
+  # Ruff - Fast Python linter and formatter (replaces flake8, black, isort)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.12.11
+    hooks:
+      - id: ruff-check
+        name: ruff-check (backend)
+        args: [--fix, --config=storefront_catalog_service/pyproject.toml]
+        files: ^storefront_catalog_service/
+      - id: ruff-format
+        name: ruff-format (backend)
+        args: [--config=storefront_catalog_service/pyproject.toml]
+        files: ^storefront_catalog_service/
+
+  # Bandit - Security linter for Python
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.8.6
+    hooks:
+      - id: bandit
+        name: bandit (backend)
+        args: ["-c", "storefront_catalog_service/pyproject.toml"]
+        files: ^storefront_catalog_service/app/
+        additional_dependencies: ["bandit[toml]"]
+
+  # import-linter - Architectural dependency checker
+  - repo: local
+    hooks:
+      - id: import-linter
+        name: import-linter (backend)
+        entry: bash -c 'cd storefront_catalog_service && PYTHONPATH=app uv run lint-imports'
+        language: system
+        files: ^storefront_catalog_service/app/.*\.py$
+        pass_filenames: false
+
+  # mypy - Static type checking for Django
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy (backend)
+        entry: bash -c 'cd storefront_catalog_service && uv run mypy app --config-file=pyproject.toml'
+        language: system
+        files: ^storefront_catalog_service/app/.*\.py$
+        pass_filenames: false
+        require_serial: true
+        verbose: true
+
+  # =============================================================================
+  # Frontend (storefront_catalog_service_frontend)
+  # =============================================================================
+
+  # Prettier - Code formatter for JS/TS/CSS/JSON
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v4.0.0-alpha.8
+    hooks:
+      - id: prettier
+        name: prettier (frontend)
+        files: ^storefront_catalog_service_frontend/app/src/
+        types_or: [javascript, jsx, ts, tsx, css, json]
+
+  # ESLint - JavaScript/TypeScript linting
+  - repo: local
+    hooks:
+      - id: eslint
+        name: eslint (frontend)
+        entry: bash -c 'cd storefront_catalog_service_frontend/app && npm run lint'
+        language: system
+        files: ^storefront_catalog_service_frontend/app/src/.*\.(ts|tsx|js|jsx)$
+        pass_filenames: false
+
+  # TypeScript - Type checking
+  - repo: local
+    hooks:
+      - id: typescript
+        name: typescript (frontend)
+        entry: bash -c 'cd storefront_catalog_service_frontend/app && npx tsc --noEmit'
+        language: system
+        files: ^storefront_catalog_service_frontend/app/src/.*\.(ts|tsx)$
+        pass_filenames: false

@@ -1,14 +1,20 @@
-from pathlib import Path
 from datetime import timedelta
+from pathlib import Path
+
+from decouple import Csv, config
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = "django-insecure-6ck=mw17c(b6l$lm9-z@5qf*99*1zm(0q%cmosxz(i+0*f_58v"
+# SECURITY: Use environment variable in production, fallback to insecure key for development only
+SECRET_KEY = config(
+    "SECRET_KEY",
+    default="django-insecure-6ck=mw17c(b6l$lm9-z@5qf*99*1zm(0q%cmosxz(i+0*f_58v",
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = config("DEBUG", default=True, cast=bool)
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="", cast=Csv())
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -19,9 +25,9 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     # Third-party apps
     "phonenumber_field",
-    'drf_spectacular',
-    'rest_framework_simplejwt',
-    'rest_framework',
+    "drf_spectacular",
+    "rest_framework_simplejwt",
+    "rest_framework",
     # Local apps
     "apps.users",
 ]
@@ -103,11 +109,9 @@ PHONENUMBER_DEFAULT_FORMAT = "E164"
 
 # DRF
 REST_FRAMEWORK = {
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticatedOrReadOnly'
-    ],
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticatedOrReadOnly"],
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
@@ -117,15 +121,43 @@ SIMPLE_JWT = {
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
-    "AUTH_HEADER_TYPES": ('Bearer',)
+    "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'Storefront Catalog API',
-    'VERSION': '1.0.0',
-    'SERVE_INCLUDE_SCHEMA': False,
-    'TAGS': [
-        {'name': 'Authentication', 'description': 'JWT authentication endpoints'},
+    "TITLE": "Storefront Catalog API",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "TAGS": [
+        {"name": "Authentication", "description": "Password-based JWT authentication"},
+        {"name": "OTP Authentication", "description": "Passwordless OTP-based authentication (2FA)"},
+        {"name": "User", "description": "User management endpoints"},
     ],
-    'OPERATION_SORTER': 'alpha',
+    "OPERATION_SORTER": "alpha",
+}
+
+
+# Logging configuration
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "{levelname} {asctime} {module} {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+        },
+    },
+    "loggers": {
+        "apps.users": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": True,
+        },
+    },
 }

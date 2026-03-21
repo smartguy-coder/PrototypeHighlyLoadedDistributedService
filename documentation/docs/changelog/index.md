@@ -23,7 +23,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 MAJOR.MINOR.PATCH
 
 MAJOR — incompatible API changes
-MINOR — new functionality (backward compatible)  
+MINOR — new functionality (backward compatible)
 PATCH — bug fixes (backward compatible)
 ```
 

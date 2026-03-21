@@ -6,8 +6,9 @@ User = get_user_model()
 
 
 @admin.register(User)
-class CustomUserAdmin(UserAdmin):
+class CustomUserAdmin(UserAdmin):  # type: ignore[type-arg]
     """Custom admin configuration for User model."""
+
     list_display = (
         "id",
         "email",
@@ -19,6 +20,8 @@ class CustomUserAdmin(UserAdmin):
     list_filter = (
         "is_active",
         "is_staff",
+        "is_email_verified",
+        "is_phone_verified",
     )
     search_fields = ("email", "phone", "first_name", "last_name")
     ordering = ("-created_at",)

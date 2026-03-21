@@ -6,8 +6,9 @@ User = get_user_model()
 
 
 @admin.register(User)
-class CustomUserAdmin(UserAdmin):
+class CustomUserAdmin(UserAdmin):  # type: ignore[type-arg]
     """Custom admin configuration for User model."""
+
     list_display = (
         "id",
         "email",

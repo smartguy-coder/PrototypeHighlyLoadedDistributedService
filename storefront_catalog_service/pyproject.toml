@@ -15,3 +15,138 @@ dependencies = [
     "python-decouple>=3.8",
     "sentry-sdk[django]>=2.52.0",
 ]
+
+[project.optional-dependencies]
+dev = [
+    "mypy>=1.16.0",
+    "django-stubs>=5.0.4",
+    "djangorestframework-stubs>=3.15.1",
+    "pre-commit>=4.2.0",
+    "bandit[toml]>=1.8.0",
+    "import-linter>=2.3",
+]
+
+# =============================================================================
+# Mypy Configuration for Django
+# =============================================================================
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = false  # Allow unused ignores during development
+show_error_codes = true
+show_column_numbers = true
+pretty = true
+
+# Django-specific settings
+plugins = [
+    "mypy_django_plugin.main",
+    "mypy_drf_plugin.main",
+]
+
+# Paths
+mypy_path = "app"
+namespace_packages = true
+explicit_package_bases = true
+
+# Ignore missing imports for third-party packages without stubs
+ignore_missing_imports = false
+
+[[tool.mypy.overrides]]
+module = [
+    "phonenumber_field.*",
+    "phonenumbers.*",
+    "drf_spectacular.*",
+    "decouple.*",
+]
+ignore_missing_imports = true
+
+# =============================================================================
+# Django-Stubs Configuration
+# =============================================================================
+[tool.django-stubs]
+django_settings_module = "settings.settings"
+
+# =============================================================================
+# Bandit - Security Linter
+# =============================================================================
+[tool.bandit]
+targets = ["app"]
+exclude_dirs = [".venv", "tests", "migrations"]
+skips = [
+    "B101",  # assert_used - OK in tests
+    "B311",  # random - OK for non-crypto purposes
+]
+
+# =============================================================================
+# Import Linter - Architectural Dependency Rules
+# =============================================================================
+[tool.importlinter]
+root_packages = ["apps", "core", "orm", "settings"]
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "Settings should not import from apps"
+type = "forbidden"
+source_modules = ["settings"]
+forbidden_modules = ["apps"]
+
+# Note: core.urls is allowed to import from apps (Django URL routing pattern)
+# So we don't forbid core -> apps entirely
+
+[[tool.importlinter.contracts]]
+name = "ORM utilities should not depend on apps"
+type = "forbidden"
+source_modules = ["orm"]
+forbidden_modules = ["apps"]
+
+# =============================================================================
+# Ruff Configuration
+# =============================================================================
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+src = ["app"]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+    "DJ",     # flake8-django
+    "SIM",    # flake8-simplify
+    "RUF",    # Ruff-specific rules
+    "S",      # flake8-bandit (security)
+    "T20",    # flake8-print
+    "DTZ",    # flake8-datetimez (like ban-utcnow)
+    "PIE",    # flake8-pie
+    "PT",     # flake8-pytest-style
+    "RSE",    # flake8-raise
+    "RET",    # flake8-return
+    "SLF",    # flake8-self
+    "TCH",    # flake8-type-checking
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "B008",   # do not perform function calls in argument defaults
+    "RUF012", # mutable class attributes should be annotated with ClassVar
+    "S101",   # assert used (OK in tests)
+    "DJ001",  # null=True on string fields - needed for unique nullable fields
+]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**/*.py" = ["S101", "S105", "S106"]  # Allow asserts and hardcoded passwords in tests
+"**/migrations/*.py" = ["E501", "RUF012"]       # Ignore in migrations
+
+[tool.ruff.lint.isort]
+known-first-party = ["app", "apps", "core", "orm", "settings"]
+section-order = ["future", "standard-library", "django", "third-party", "first-party", "local-folder"]
+
+[tool.ruff.lint.isort.sections]
+django = ["django", "rest_framework"]

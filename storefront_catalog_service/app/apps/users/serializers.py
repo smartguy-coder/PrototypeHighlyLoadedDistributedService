@@ -3,11 +3,19 @@ from typing import Any
 
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
-from django.db import transaction
 from rest_framework import serializers
 
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from apps.users.bl import (
+    OTPExpiredError,
+    OTPInvalidSecretError,
+    OTPNotFoundError,
+    find_valid_otp,
+    generate_tokens,
+    get_or_create_verified_user,
+    verify_otp_secret,
+)
 from apps.users.models import OTPCode, User
 from orm import PhoneNumberField
 
@@ -240,45 +248,28 @@ class OTPVerifySerializer(serializers.Serializer[dict[str, str]]):
         if not email and not phone:
             raise serializers.ValidationError({"detail": "Email or phone is required."})
 
-        # Find the OTP
-        otp: OTPCode | None
-        if email:
-            otp = (
-                OTPCode.objects.filter(
-                    email=email.strip().lower(),
-                    verification_code=verification_code,
-                    is_used=False,
-                )
-                .order_by("-id")
-                .first()
+        phone_str = str(phone) if phone else None
+
+        try:
+            otp = find_valid_otp(
+                email=email,
+                phone=phone_str,
+                verification_code=verification_code,
             )
-        else:
-            otp = (
-                OTPCode.objects.filter(
-                    phone=phone,
-                    verification_code=verification_code,
-                    is_used=False,
-                )
-                .order_by("-id")
-                .first()
-            )
-
-        if not otp:
-            raise serializers.ValidationError({"detail": "Invalid verification code."})
-
-        if not otp.is_valid():
-            raise serializers.ValidationError({"detail": "OTP has expired."})
-
-        if not otp.verify_secret(secret_code):
-            raise serializers.ValidationError({"detail": "Invalid secret code."})
+            verify_otp_secret(otp, secret_code)
+        except OTPNotFoundError:
+            raise serializers.ValidationError({"detail": "Invalid verification code."}) from None
+        except OTPExpiredError:
+            raise serializers.ValidationError({"detail": "OTP has expired."}) from None
+        except OTPInvalidSecretError:
+            raise serializers.ValidationError({"detail": "Invalid secret code."}) from None
 
         attrs["otp"] = otp
         attrs["email"] = email
-        attrs["phone"] = str(phone) if phone else None
+        attrs["phone"] = phone_str
 
         return attrs
 
-    @transaction.atomic
     def create(self, validated_data: dict[str, Any]) -> dict[str, str]:
         otp: OTPCode = validated_data["otp"]
         email = validated_data.get("email")
@@ -286,44 +277,10 @@ class OTPVerifySerializer(serializers.Serializer[dict[str, str]]):
 
         otp.mark_as_used()
 
-        user: User
-        if email:
-            existing_user = User.objects.filter(email=email).first()
-            if existing_user:
-                # Existing user - mark email as verified
-                if not existing_user.is_email_verified:
-                    existing_user.is_email_verified = True
-                    existing_user.save(update_fields=["is_email_verified", "updated_at"])
-                user = existing_user
-            else:
-                # New user - create with verified email and unusable password
-                user = User.objects.create_user(
-                    email=email,
-                    password=None,  # Will set unusable password
-                    is_email_verified=True,
-                )
-                user.set_unusable_password()
-                user.save()
-        else:
-            existing_user = User.objects.filter(phone=phone).first()
-            if existing_user:
-                # Existing user - mark phone as verified
-                if not existing_user.is_phone_verified:
-                    existing_user.is_phone_verified = True
-                    existing_user.save(update_fields=["is_phone_verified"])
-                user = existing_user
-            else:
-                # New user - create with verified phone and unusable password
-                user = User.objects.create_user(
-                    phone=phone,
-                    password=None,
-                    is_phone_verified=True,
-                )
-                user.set_unusable_password()
-                user.save()
+        user = get_or_create_verified_user(email=email, phone=phone)
+        tokens = generate_tokens(user)
 
-        refresh = RefreshToken.for_user(user)
         return {
-            "refresh": str(refresh),
-            "access": str(refresh.access_token),
+            "refresh": tokens.refresh,
+            "access": tokens.access,
         }

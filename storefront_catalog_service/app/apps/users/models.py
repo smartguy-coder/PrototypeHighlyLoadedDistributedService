@@ -11,7 +11,7 @@ from django.utils import timezone
 from phonenumber_field.modelfields import PhoneNumberField
 
 from apps.users.managers import CustomUserManager
-from orm import BOOLEAN_DEFAULT_FALSE, NULLABLE_UNIQUE_INDEXED, CreatedAtUpdatedAtMixin
+from orm import BOOLEAN_DEFAULT_FALSE, NULLABLE_INDEXED, NULLABLE_UNIQUE_INDEXED, CreatedAtUpdatedAtMixin
 
 
 class User(CreatedAtUpdatedAtMixin, AbstractUser):
@@ -65,12 +65,12 @@ class OTPCode(CreatedAtUpdatedAtMixin):
     4. If valid: user is found/created and JWT tokens returned
     """
 
-    OTP_VALIDITY_MINUTES: ClassVar[int] = 5
-    VERIFICATION_CODE_LENGTH: ClassVar[int] = 6
-    SECRET_CODE_LENGTH: ClassVar[int] = 4
+    OTP_VALIDITY_MINUTES: int = 5
+    VERIFICATION_CODE_LENGTH: int = 6
+    SECRET_CODE_LENGTH: int = 4
 
-    email = models.EmailField("email address", null=True, blank=True, db_index=True)
-    phone = PhoneNumberField("phone number", null=True, blank=True, db_index=True)
+    email = models.EmailField("email address", **NULLABLE_INDEXED)
+    phone = PhoneNumberField("phone number", **NULLABLE_INDEXED)
     verification_code = models.CharField(
         help_text="6-digit code shown to user (for identifying the OTP request)",
         max_length=6,
@@ -81,7 +81,7 @@ class OTPCode(CreatedAtUpdatedAtMixin):
         max_length=64,
     )
     expires_at = models.DateTimeField("expires at", db_index=True)
-    is_used = models.BooleanField("is used", default=False)
+    is_used = models.BooleanField("is used", **BOOLEAN_DEFAULT_FALSE)
 
     class Meta:
         verbose_name = "OTP code"

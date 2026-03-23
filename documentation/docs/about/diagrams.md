@@ -57,13 +57,13 @@ flowchart TB
     Cafe1 --> MenuCatalog
     Cafe2 --> MenuCatalog
     CafeN --> MenuCatalog
-    
+
     API --> OrderMgmt
     OrderMgmt --> OrderWF
     OrderWF --> PaymentWF
     PaymentWF --> DeliveryWF
     DeliveryWF --> SettlementWF
-    
+
     PaymentWF --> BalanceCtrl
     BalanceCtrl --> Commission
     Commission --> SettlementWF
@@ -150,7 +150,7 @@ stateDiagram-v2
     ReadyForPickup --> InDelivery: Courier picked up
     InDelivery --> Delivered: Customer received
     Delivered --> [*]
-    
+
     Paid --> Cancelled: Customer cancels
     Preparing --> Cancelled: Restaurant cancels
 ```
@@ -210,26 +210,26 @@ flowchart TB
     subgraph Cloud["CLOUD / ON-PREMISE"]
         subgraph K8s["Kubernetes Cluster"]
             Ingress["Ingress Controller"]
-            
+
             subgraph Apps["Application Pods"]
                 API["API Servers"]
                 Workers["Background Workers"]
             end
         end
-        
+
         subgraph Managed["Managed Services"]
             RDS[(PostgreSQL RDS)]
             ElastiCache[(Redis)]
             MSK["Kafka MSK"]
         end
-        
+
         subgraph Monitoring["OBSERVABILITY"]
             Prometheus["Prometheus"]
             Grafana["Grafana"]
             Sentry["Sentry"]
         end
     end
-    
+
     Internet["Internet"] --> Ingress
     Ingress --> Apps
     Apps --> Managed
@@ -245,14 +245,14 @@ erDiagram
     USER ||--o{ ORDER : places
     USER ||--o| PARTNER : owns
     USER ||--o| COURIER : is
-    
+
     PARTNER ||--o{ MENU_ITEM : offers
     PARTNER ||--o{ ORDER : receives
-    
+
     ORDER ||--|{ ORDER_ITEM : contains
     ORDER ||--o| COURIER : delivered_by
     ORDER ||--o| PAYMENT : has
-    
+
     COURIER ||--o{ DELIVERY : makes
 ```
 

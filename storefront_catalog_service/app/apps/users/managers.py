@@ -1,13 +1,24 @@
+from typing import TYPE_CHECKING, Any
+
 from django.contrib.auth.models import BaseUserManager
 
+if TYPE_CHECKING:
+    from apps.users.models import User
 
-class CustomUserManager(BaseUserManager):
+
+class CustomUserManager(BaseUserManager["User"]):
     """
     Custom user model manager.
     Supports authentication via email or phone.
     """
 
-    def create_user(self, email=None, phone=None, password=None, **extra_fields):
+    def create_user(
+        self,
+        email: str | None = None,
+        phone: str | None = None,
+        password: str | None = None,
+        **extra_fields: Any,
+    ) -> "User":
         if not email and not phone:
             raise ValueError("User must have an email or phone number")
 
@@ -22,7 +33,13 @@ class CustomUserManager(BaseUserManager):
         user.save(using=self._db)
         return user
 
-    def create_superuser(self, email=None, phone=None, password=None, **extra_fields):
+    def create_superuser(
+        self,
+        email: str | None = None,
+        phone: str | None = None,
+        password: str | None = None,
+        **extra_fields: Any,
+    ) -> "User":
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", True)
 

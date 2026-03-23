@@ -52,7 +52,7 @@ npm run dev
   - ESLint
   - Prettier
   - TypeScript Vue Plugin (Volar)
-  
+
 - **Браузер**: Chrome/Firefox з React DevTools
 
 ### Code Style

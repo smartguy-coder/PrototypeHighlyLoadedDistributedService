@@ -5,6 +5,21 @@ Django REST API for storefront operations — user management, catalog, and orde
 **Tech Stack:** Django 6, Django REST Framework, PostgreSQL
 
 ---
+## 0.4.0 — 2026-03-13
+
+[:octicons-git-pull-request-16: PR #6](https://github.com/smartguy-coder/PrototypeHighlyLoadedDistributedService/pull/6)
+
+### :material-plus: Added
+
+- pre-commit
+- passwordless auth and registration via OTP
+- init and help commands in Makefile
+
+### :material-sync: Changed
+
+- CR: use new custom DRF serializer for phone number instead standard CharField
+
+---
 ## 0.3.0 — 2026-03-13
 
 [:octicons-git-pull-request-16: PR #5](https://github.com/smartguy-coder/PrototypeHighlyLoadedDistributedService/pull/5)

@@ -1,10 +1,13 @@
+from typing import Any
+
 from django.conf import settings
-from django.contrib.auth import get_user_model
 from django.contrib.auth.backends import ModelBackend
 from django.db.models import Q
+from django.http import HttpRequest
+
 from phonenumber_field.phonenumber import PhoneNumber
 
-User = get_user_model()
+from apps.users.models import User
 
 
 class EmailOrPhoneBackend(ModelBackend):
@@ -17,13 +20,21 @@ class EmailOrPhoneBackend(ModelBackend):
         ]
     """
 
-    def authenticate(self, request, username=None, password=None, **kwargs) -> User | None:
+    def authenticate(
+        self,
+        request: HttpRequest | None,
+        username: str | None = None,
+        password: str | None = None,
+        **kwargs: Any,
+    ) -> User | None:
         """
         Authenticate user by email or phone.
 
         Args:
+            request: The HTTP request.
             username: Can be email or phone number.
             password: User password.
+            **kwargs: Additional keyword arguments.
 
         Returns:
             User instance if authentication successful, None otherwise.
@@ -31,19 +42,17 @@ class EmailOrPhoneBackend(ModelBackend):
         if username is None or password is None:
             return None
 
-        phone_number = None
         try:
             phone_number = PhoneNumber.from_string(username, region=settings.PHONENUMBER_DEFAULT_REGION)
             if not phone_number.is_valid():
                 phone_number = None
         except Exception:
-            pass
+            # Expected when username is email format, not a phone number
+            phone_number = None
 
         try:
             if phone_number:
-                user = User.objects.get(
-                    Q(email=username) | Q(phone=phone_number)
-                )
+                user = User.objects.get(Q(email=username) | Q(phone=phone_number))
             else:
                 user = User.objects.get(email=username)
         except User.DoesNotExist:

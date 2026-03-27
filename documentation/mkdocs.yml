@@ -11,6 +11,9 @@ nav:
     - Running Project:
       - Local: running_project_local.md
       - Production: running_project_prod.md
+  - Technologies:
+    - Overview: technologies/index.md
+    - Apache Kafka: technologies/kafka.md
   - Changelog:
     - Overview: changelog/index.md
     - Storefront Frontend: changelog/storefront-frontend.md

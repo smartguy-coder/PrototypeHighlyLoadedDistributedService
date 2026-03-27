@@ -176,6 +176,8 @@ class CurrentUserView(generics.RetrieveUpdateAPIView[User]):
 
     GET: Returns the current user's profile information.
     PATCH/PUT: Updates the current user's profile (email, phone, first_name, last_name).
+
+    Note: Changing email or phone will reset their verification status.
     """
 
     serializer_class = UserSerializer
@@ -183,6 +185,28 @@ class CurrentUserView(generics.RetrieveUpdateAPIView[User]):
 
     def get_object(self) -> User:
         return self.request.user  # type: ignore[return-value]
+
+    def perform_update(self, serializer: UserSerializer) -> None:  # type: ignore[override]
+        """
+        Update user profile with verification status reset.
+
+        If email or phone is changed, the corresponding verification flag
+        is reset to False, requiring the user to re-verify.
+        """
+        instance: User = self.get_object()
+        validated_data = serializer.validated_data
+
+        # Check if email is being changed
+        new_email = validated_data.get("email")
+        if new_email is not None and new_email != instance.email:
+            validated_data["is_email_verified"] = False
+
+        # Check if phone is being changed
+        new_phone = validated_data.get("phone")
+        if new_phone is not None and new_phone != instance.phone:
+            validated_data["is_phone_verified"] = False
+
+        serializer.save()
 
     @extend_schema(
         summary="Get current user profile",
@@ -207,17 +231,19 @@ Partially update the current user's profile. Only provided fields will be update
 | `last_name` | string | User's last name |
 
 ⚠️ **Note:** At least one of `email` or `phone` must remain on the account.
+
+⚠️ **Verification Reset:** Changing `email` or `phone` will reset their verification status to `false`.
         """,
         examples=[
             OpenApiExample(
                 name="Update email",
-                description="Change user's email address",
+                description="Change user's email address (resets email verification)",
                 value={"email": "newemail@example.com"},
                 request_only=True,
             ),
             OpenApiExample(
                 name="Update phone",
-                description="Change user's phone number",
+                description="Change user's phone number (resets phone verification)",
                 value={"phone": "+380509876543"},
                 request_only=True,
             ),
@@ -272,6 +298,8 @@ Completely replace the current user's profile. All editable fields should be pro
 | `last_name` | string | No | User's last name |
 
 \* At least one of `email` or `phone` is required.
+
+⚠️ **Verification Reset:** Changing `email` or `phone` will reset their verification status to `false`.
         """,
         examples=[
             OpenApiExample(

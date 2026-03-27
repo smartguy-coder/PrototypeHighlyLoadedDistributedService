@@ -36,8 +36,7 @@ init: ## First time setup: install deps, build and start containers
 	@echo "🚀 Starting containers..."
 	$(DOCKER_COMPOSE) up -d
 	@echo ""
-	cd storefront_catalog_service_frontend/app && npm run dev
-	@echo "🎉 Project started successfully! (temporally not reachable because of react starting not in docker) "
+	@echo "🎉 Project started successfully!"
 
 .PHONY: up
 up: ## Start containers (for subsequent runs)

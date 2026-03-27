@@ -1,7 +1,12 @@
-from datetime import timedelta
-from pathlib import Path
+from pathlib import Path  # type: ignore
 
 from decouple import Csv, config
+
+from settings.settings_auth import *  # noqa: F403  # type: ignore
+from settings.settings_databases import *  # noqa: F403  # type: ignore
+from settings.settings_drf import *  # noqa: F403  # type: ignore
+from settings.settings_kafka import *  # noqa: F403  # type: ignore
+from settings.settings_logging import *  # noqa: F403  # type: ignore
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -12,9 +17,10 @@ SECRET_KEY = config(
 )
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config("DEBUG", default=True, cast=bool)
-
+DEBUG = config("DEBUG", default=False, cast=bool)
 ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="", cast=Csv())
+ROOT_URLCONF = "core.urls"
+WSGI_APPLICATION = "core.wsgi.application"
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -30,6 +36,7 @@ INSTALLED_APPS = [
     "rest_framework",
     # Local apps
     "apps.users",
+    "apps.services",
 ]
 
 
@@ -43,7 +50,6 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = "core.urls"
 
 TEMPLATES = [
     {
@@ -60,32 +66,6 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "core.wsgi.application"
-
-
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
-    }
-}
-
-
-AUTH_PASSWORD_VALIDATORS = [
-    {
-        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
-    },
-]
-
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_I18N = True
@@ -95,69 +75,6 @@ STATIC_URL = "static/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Custom User Model
-AUTH_USER_MODEL = "users.User"
-
-# Authentication Backends
-AUTHENTICATION_BACKENDS = [
-    "apps.users.backends.EmailOrPhoneBackend",
-]
-
 # Phone Number Field Settings
 PHONENUMBER_DEFAULT_REGION = None  # Require country code (e.g., +380, +1)
 PHONENUMBER_DEFAULT_FORMAT = "E164"
-
-# DRF
-REST_FRAMEWORK = {
-    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticatedOrReadOnly"],
-    "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
-    ],
-    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
-}
-
-SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
-    "ROTATE_REFRESH_TOKENS": True,
-    "BLACKLIST_AFTER_ROTATION": True,
-    "AUTH_HEADER_TYPES": ("Bearer",),
-}
-
-SPECTACULAR_SETTINGS = {
-    "TITLE": "Storefront Catalog API",
-    "VERSION": "1.0.0",
-    "SERVE_INCLUDE_SCHEMA": False,
-    "TAGS": [
-        {"name": "Authentication", "description": "Password-based JWT authentication"},
-        {"name": "OTP Authentication", "description": "Passwordless OTP-based authentication (2FA)"},
-        {"name": "User", "description": "User management endpoints"},
-    ],
-    "OPERATION_SORTER": "alpha",
-}
-
-
-# Logging configuration
-LOGGING = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    "formatters": {
-        "verbose": {
-            "format": "{levelname} {asctime} {module} {message}",
-            "style": "{",
-        },
-    },
-    "handlers": {
-        "console": {
-            "class": "logging.StreamHandler",
-            "formatter": "verbose",
-        },
-    },
-    "loggers": {
-        "apps.users": {
-            "handlers": ["console"],
-            "level": "INFO",
-            "propagate": True,
-        },
-    },
-}

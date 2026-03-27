@@ -6,6 +6,16 @@ React-based customer-facing web application.
 
 ---
 
+## 0.2.0 — 2026-03-28
+
+[:octicons-git-pull-request-16: PR #7](https://github.com/smartguy-coder/PrototypeHighlyLoadedDistributedService/pull/7)
+
+### :material-plus: Added
+
+- dockerize
+
+---
+
 ## 0.1.0 — 2026-03-11
 
 [:octicons-git-pull-request-16: PR #3](https://github.com/smartguy-coder/PrototypeHighlyLoadedDistributedService/pull/3)

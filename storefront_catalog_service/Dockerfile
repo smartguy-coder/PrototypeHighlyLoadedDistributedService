@@ -17,8 +17,8 @@ COPY pyproject.toml uv.lock /app/
 
 RUN uv pip install --system --no-cache .
 
-#COPY --chown=appuser:appgroup /app /app
 COPY /app /app
+RUN chown -R appuser:appgroup /app
 USER appuser
 
 EXPOSE 8000

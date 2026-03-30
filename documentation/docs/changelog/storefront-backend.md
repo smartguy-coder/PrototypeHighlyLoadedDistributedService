@@ -5,6 +5,25 @@ Django REST API for storefront operations — user management, catalog, and orde
 **Tech Stack:** Django 6, Django REST Framework, PostgreSQL
 
 ---
+
+## 0.5.0 — 2026-03-28
+
+[:octicons-git-pull-request-16: PR #7](https://github.com/smartguy-coder/PrototypeHighlyLoadedDistributedService/pull/7)
+
+### :material-plus: Added
+
+- kafka cluster for communication among microservices
+
+### :material-sync: Changed
+
+- settings refactoring
+
+### :material-bug: Fixed
+
+- while updating user email and phone not verified
+
+---
+
 ## 0.4.0 — 2026-03-13
 
 [:octicons-git-pull-request-16: PR #6](https://github.com/smartguy-coder/PrototypeHighlyLoadedDistributedService/pull/6)
@@ -20,6 +39,7 @@ Django REST API for storefront operations — user management, catalog, and orde
 - CR: use new custom DRF serializer for phone number instead standard CharField
 
 ---
+
 ## 0.3.0 — 2026-03-13
 
 [:octicons-git-pull-request-16: PR #5](https://github.com/smartguy-coder/PrototypeHighlyLoadedDistributedService/pull/5)
@@ -31,6 +51,7 @@ Django REST API for storefront operations — user management, catalog, and orde
 - Makefile
 
 ---
+
 ## 0.2.0 — 2026-03-11
 
 [:octicons-git-pull-request-16: PR #4](https://github.com/smartguy-coder/PrototypeHighlyLoadedDistributedService/pull/4)

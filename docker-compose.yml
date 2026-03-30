@@ -1,6 +1,58 @@
+# ============================================================================
+# YAML Anchors / Extension Fields
+# ============================================================================
+
+x-kafka-broker-common: &kafka-broker-common
+  image: confluentinc/cp-kafka:7.6.0
+  restart: unless-stopped
+  healthcheck:
+    test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+    interval: 10s
+    timeout: 10s
+    retries: 5
+    start_period: 30s
+
+x-kafka-env-common: &kafka-env-common
+  # KRaft mode settings (no Zookeeper)
+  KAFKA_PROCESS_ROLES: broker,controller
+  KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+  KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093
+  CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+  # Listener configuration
+  KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+  KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+  # Cluster settings (production-like)
+  KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+  KAFKA_MIN_INSYNC_REPLICAS: 2
+  KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+  KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+  KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+  # Performance tuning
+  KAFKA_NUM_PARTITIONS: 3
+  KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+  KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+  KAFKA_LOG_RETENTION_HOURS: 168
+  KAFKA_LOG_SEGMENT_BYTES: 1073741824
+  KAFKA_LOG_RETENTION_CHECK_INTERVAL_MS: 300000
+
+x-kafka-depends-on: &kafka-depends-on
+  kafka-1:
+    condition: service_healthy
+  kafka-2:
+    condition: service_healthy
+  kafka-3:
+    condition: service_healthy
+
+# ============================================================================
+# Services
+# ============================================================================
+
 services:
   documentation:
-    image: squidfunk/mkdocs-material:latest
+    # Pinned to 9.7.1 (last version without MkDocs 2.0 warning banner)
+    # Material for MkDocs is in maintenance mode until Nov 2026
+    # See: https://squidfunk.github.io/mkdocs-material/blog/2026/02/18/mkdocs-2.0/
+    image: squidfunk/mkdocs-material:9.7.1
     container_name: mkdocs
     hostname: mkdocs
     command: serve --dev-addr=0.0.0.0:8010 --watch-theme
@@ -12,21 +64,134 @@ services:
 #    profiles:
 #      - docs
 
+  # ============================================================================
+  # Kafka Infrastructure (3-broker KRaft cluster)
+  # ============================================================================
+  # Production-like setup with KRaft (no Zookeeper):
+  # - 3 Kafka nodes in combined mode (broker + controller)
+  # - Controller quorum for metadata management
+  # - Replication factor = 3 (every partition on all brokers)
+  # - Min ISR = 2 (at least 2 replicas must acknowledge writes)
+  # ============================================================================
+  # Ports:
+  # - CONTROLLER (9093): controller quorum communication (Docker network only)
+  # - INTERNAL (9092): inter-broker + internal client (Docker network only)
+  # - EXTERNAL (29092/29093/29094): client access from host machine
+  # ============================================================================
+
+  kafka-1:
+    <<: *kafka-broker-common
+    container_name: kafka-1
+    hostname: kafka-1
+    ports:
+      - "29092:29092"  # EXTERNAL only - for host access
+    environment:
+      <<: *kafka-env-common
+      KAFKA_NODE_ID: 1
+      KAFKA_LISTENERS: CONTROLLER://0.0.0.0:9093,INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-1:9092,EXTERNAL://localhost:29092
+      KAFKA_JMX_PORT: 9991
+      KAFKA_JMX_HOSTNAME: kafka-1
+    volumes:
+      - kafka-1-data:/var/lib/kafka/data
+
+  kafka-2:
+    <<: *kafka-broker-common
+    container_name: kafka-2
+    hostname: kafka-2
+    ports:
+      - "29093:29093"  # EXTERNAL only - for host access
+    environment:
+      <<: *kafka-env-common
+      KAFKA_NODE_ID: 2
+      KAFKA_LISTENERS: CONTROLLER://0.0.0.0:9093,INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:29093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-2:9092,EXTERNAL://localhost:29093
+      KAFKA_JMX_PORT: 9992
+      KAFKA_JMX_HOSTNAME: kafka-2
+    volumes:
+      - kafka-2-data:/var/lib/kafka/data
+
+  kafka-3:
+    <<: *kafka-broker-common
+    container_name: kafka-3
+    hostname: kafka-3
+    ports:
+      - "29094:29094"  # EXTERNAL only - for host access
+    environment:
+      <<: *kafka-env-common
+      KAFKA_NODE_ID: 3
+      KAFKA_LISTENERS: CONTROLLER://0.0.0.0:9093,INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:29094
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-3:9092,EXTERNAL://localhost:29094
+      KAFKA_JMX_PORT: 9993
+      KAFKA_JMX_HOSTNAME: kafka-3
+    volumes:
+      - kafka-3-data:/var/lib/kafka/data
+
+  # Schema Registry - NOT USED
+  # We use Pydantic + JSON instead of Avro + Schema Registry
+  # See: documentation/docs/technologies/kafka.md#schema-registry
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    hostname: kafka-ui
+    restart: unless-stopped
+    depends_on:
+      <<: *kafka-depends-on
+    ports:
+      - "7001:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local-cluster
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka-1:9092,kafka-2:9092,kafka-3:9092
+      KAFKA_CLUSTERS_0_METRICS_PORT: 9991
+      DYNAMIC_CONFIG_ENABLED: "true"
+      # Default serde for message display (removes "Fallback" warning)
+      KAFKA_CLUSTERS_0_DEFAULTKEYSERDE: String
+      KAFKA_CLUSTERS_0_DEFAULTVALUESERDE: String
+
+  # ============================================================================
+  # Application Services backend
+  # ============================================================================
+
   storefront_catalog_service:
     container_name: storefront_catalog_service
-    hostname: storefront_catalog_service
+    hostname: storefrontCatalogService
     ports:
       - "8000:8000"
     build:
       dockerfile: Dockerfile
       context: ./storefront_catalog_service
     restart: unless-stopped
+    depends_on:
+      <<: *kafka-depends-on
     command: |
       sh -c "
       uv run python manage.py migrate &&
+      uv run python manage.py create_kafka_topics --partitions 3 --replication-factor 3 &&
       uv run python manage.py runserver 0.0.0.0:8000
       "
     volumes:
       - ./storefront_catalog_service/app:/app
     env_file:
       - .env
+
+  storefront_catalog_service_frontend:
+    build:
+      dockerfile: Dockerfile
+      context: ./storefront_catalog_service_frontend/app
+    container_name: storefront_catalog_service_frontend
+    hostname: storefrontCatalogServiceFrontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./storefront_catalog_service_frontend/app:/app
+      - /app/node_modules
+
+
+volumes:
+  kafka-1-data:
+    driver: local
+  kafka-2-data:
+    driver: local
+  kafka-3-data:
+    driver: local

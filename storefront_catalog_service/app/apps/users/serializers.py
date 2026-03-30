@@ -5,6 +5,7 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
+from kafka.services import send_otp_notification
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.users.bl import (
@@ -218,10 +219,16 @@ class OTPRequestSerializer(serializers.Serializer[dict[str, Any]]):
         phone = validated_data.get("phone")
 
         otp, secret_code = OTPCode.create_otp(email=email, phone=phone)
-        target = email or phone
 
-        # todo Log the secret code (in production, this would be sent via email/SMS)
-        logger.info(f"OTP secret code for {target}: {secret_code}")
+        send_otp_notification(
+            verification_code=otp.verification_code,
+            secret_code=secret_code,
+            expires_at=otp.expires_at,
+            email=email,
+            phone=phone,
+        )
+
+        logger.debug(f"OTP created for {email or phone}")
 
         return {
             "verification_code": otp.verification_code,

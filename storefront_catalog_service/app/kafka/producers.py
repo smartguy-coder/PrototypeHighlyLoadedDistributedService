@@ -14,17 +14,17 @@ Import and use directly:
 """
 
 from kafka.producer import BaseKafkaProducer, create_producer
-from kafka.schemas import OTPNotification
+from kafka.schemas import OTPNotificationSchema
 from kafka.topics import (
     TOPIC_NOTIFICATIONS_OTP,
 )
 
 
-class OTPNotificationProducer(BaseKafkaProducer[OTPNotification]):
+class OTPNotificationProducer(BaseKafkaProducer[OTPNotificationSchema]):
     """Producer for OTP notification messages."""
 
     topic = TOPIC_NOTIFICATIONS_OTP
-    schema = OTPNotification
+    schema = OTPNotificationSchema
 
 
 # Create singleton instances

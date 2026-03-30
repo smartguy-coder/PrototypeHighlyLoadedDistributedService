@@ -35,7 +35,7 @@ from kafka.producers import (
 )
 from kafka.schemas import (
     NotificationChannel,
-    OTPNotification,
+    OTPNotificationSchema,
 )
 from kafka.services import (
     send_otp_notification,
@@ -49,7 +49,7 @@ __all__ = [
     "BaseKafkaProducer",
     "KafkaPublisherException",
     "NotificationChannel",
-    "OTPNotification",
+    "OTPNotificationSchema",
     "create_producer",
     "flush_all_producers",
     "otp_notification_producer",

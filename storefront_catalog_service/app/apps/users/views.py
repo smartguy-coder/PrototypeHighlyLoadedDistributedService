@@ -197,7 +197,7 @@ class CurrentUserView(generics.RetrieveUpdateAPIView[User]):
         validated_data = serializer.validated_data
 
         # Check if email is being changed
-        new_email = validated_data.get("email")
+        new_email = validated_data.get("email", "").lower() or None
         if new_email is not None and new_email != instance.email:
             validated_data["is_email_verified"] = False
 

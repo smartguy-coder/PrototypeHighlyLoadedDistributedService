@@ -11,7 +11,7 @@ Provides a production-ready producer that:
 
 import logging
 import threading
-from typing import Any, ClassVar, cast
+from typing import Any, ClassVar
 
 from django.conf import settings
 
@@ -26,7 +26,7 @@ class KafkaPublisherException(Exception):
     """Raised when message publishing fails."""
 
 
-class BaseKafkaProducer[SchemaType: BaseModel]:
+class BaseKafkaProducer[SchemaT: BaseModel]:
     """
     Base class for Kafka producers with Pydantic schema support.
 
@@ -103,7 +103,7 @@ class BaseKafkaProducer[SchemaType: BaseModel]:
 
     def publish(
         self,
-        data: dict[str, Any] | SchemaType,
+        data: SchemaT,
         key: str | None = None,
         headers: dict[str, str] | None = None,
         flush: bool = False,
@@ -112,7 +112,7 @@ class BaseKafkaProducer[SchemaType: BaseModel]:
         Publish a message to Kafka.
 
         Args:
-            data: Message data (dict or Pydantic model instance)
+            data: Validated Pydantic model instance
             key: Optional message key for partitioning (ensures ordering)
             headers: Optional message headers (metadata)
             flush: If True, wait for delivery confirmation
@@ -120,10 +120,7 @@ class BaseKafkaProducer[SchemaType: BaseModel]:
         Raises:
             KafkaPublisherException: If publishing fails
         """
-        # Validate and serialize
-        validated = data if isinstance(data, BaseModel) else cast("SchemaType", self.schema.model_validate(data))
-
-        message = validated.model_dump_json()
+        message = data.model_dump_json()
 
         # Prepare headers if provided
         kafka_headers: list[tuple[str, str | bytes | None]] | None = None
@@ -208,10 +205,10 @@ def get_kafka_config() -> dict[str, Any]:
     }
 
 
-def create_producer[S: BaseModel](
-    producer_class: type[BaseKafkaProducer[S]],
+def create_producer(
+    producer_class: type[BaseKafkaProducer[Any]],
     transport: Any = None,
-) -> BaseKafkaProducer[S]:
+) -> BaseKafkaProducer[Any]:
     """
     Create a producer instance.
 

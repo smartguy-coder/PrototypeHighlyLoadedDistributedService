@@ -17,10 +17,9 @@ class NotificationChannel(StrEnum):
 
     SMS = "sms"
     EMAIL = "email"
-    PUSH = "push"
 
 
-class OTPNotification(BaseModel):
+class OTPNotificationSchema(BaseModel):
     """
     OTP notification message schema.
 

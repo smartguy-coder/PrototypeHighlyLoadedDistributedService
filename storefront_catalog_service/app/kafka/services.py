@@ -13,7 +13,7 @@ from datetime import datetime
 
 from kafka.producer import KafkaPublisherException
 from kafka.producers import otp_notification_producer
-from kafka.schemas import NotificationChannel
+from kafka.schemas import NotificationChannel, OTPNotificationSchema
 
 logger = logging.getLogger(__name__)
 
@@ -47,18 +47,18 @@ def send_otp_notification(
     target = email or phone
 
     # Build notification payload
-    notification_data = {
-        "email": email,
-        "phone": phone,
-        "secret_code": secret_code,
-        "verification_code": verification_code,
-        "channel": channel,
-        "expires_at": expires_at,
-    }
+    notification = OTPNotificationSchema(
+        email=email,
+        phone=phone,
+        secret_code=secret_code,
+        verification_code=verification_code,
+        channel=channel,
+        expires_at=expires_at,
+    )
 
     try:
         otp_notification_producer.publish(
-            data=notification_data,
+            data=notification,
             key=target,
             headers={
                 "source": "storefront-catalog-service",

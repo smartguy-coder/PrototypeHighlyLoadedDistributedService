@@ -1,0 +1,9 @@
+include LICENSE
+include README.md
+include pyproject.toml
+recursive-include prototype_highly_loaded_distributed_service_utils *.py
+recursive-include tests *.py
+global-exclude __pycache__
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude .DS_Store

@@ -6,3 +6,10 @@ node_modules
 db.sqlite3
 
 .env
+
+# pypi package
+/pypi_package_utils/uv.lock
+/pypi_package_utils/build/
+/pypi_package_utils/dist/
+/pypi_package_utils/prototype_highly_loaded_distributed_service_utils.egg-info/
+/pypi_package_utils/.pytest_cache/

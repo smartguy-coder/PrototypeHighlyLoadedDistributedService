@@ -104,3 +104,40 @@ shell-django: ## Open Django shell
 .PHONY: test
 test: ## Run tests
 	docker exec -it $(STOREFRONT_BACKEND_CONTAINER) $(PYTHON) $(MANAGE_PY) test
+
+# =============================================================================
+# PyPI Package Publishing
+# =============================================================================
+
+PYPI_PACKAGE_DIR = pypi_package_utils
+
+.PHONY: pypi-clean
+pypi-clean: ## Clean PyPI package build artifacts
+	@echo "🧹 Cleaning build artifacts..."
+	cd $(PYPI_PACKAGE_DIR) && rm -rf dist/ build/ *.egg-info .pytest_cache/
+	find $(PYPI_PACKAGE_DIR) -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
+	@echo "✅ Clean completed!"
+
+.PHONY: pypi-test
+pypi-test: ## Run tests for PyPI package
+	@echo "🧪 Running tests..."
+	cd $(PYPI_PACKAGE_DIR) && uv sync --extra dev
+	cd $(PYPI_PACKAGE_DIR) && uv run pytest -v
+	@echo "✅ Tests passed!"
+
+.PHONY: pypi-build
+pypi-build: ## Build PyPI package (wheel)
+	@echo "🧹 Cleaning old builds..."
+	cd $(PYPI_PACKAGE_DIR) && rm -rf dist/ build/ *.egg-info
+	@echo "📦 Building wheel..."
+	cd $(PYPI_PACKAGE_DIR) && uv build --wheel
+	@echo "✅ Build completed!"
+
+.PHONY: pypi-publish
+pypi-publish: pypi-test pypi-build ## Run tests, build and publish package to PyPI
+	@echo "🔍 Checking package..."
+	cd $(PYPI_PACKAGE_DIR) && uv run twine check dist/*
+	@echo "🚀 Publishing to PyPI (enter credentials when prompted)..."
+	cd $(PYPI_PACKAGE_DIR) && uv run twine upload dist/*
+	@echo "✅ Published! pip install prototype-highly-loaded-distributed-service-utils"
+	$(MAKE) pypi-clean

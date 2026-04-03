@@ -11,6 +11,7 @@ Each guide provides theory, practical implementation details, and best practices
 | Technology | Category | Documentation |
 |------------|----------|---------------|
 | [Apache Kafka](kafka.md) | Message Broker | Event streaming for async communication |
+| [PyPI Publishing](pypi-publishing.md) | Package Distribution | Shared utilities across microservices |
 
 ---
 

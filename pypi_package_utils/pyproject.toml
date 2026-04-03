@@ -1,0 +1,67 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "prototype-highly-loaded-distributed-service-utils"
+version = "0.1.2"
+description = "Shared utilities for PrototypeHighlyLoadedDistributedService microservices"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.12"
+authors = [
+    {name = "Vasyl Kartychak", email = "your.email@example.com"}
+]
+dependencies = [
+    "pydantic>=2.0",
+]
+keywords = [
+    "microservices",
+    "utilities",
+    "distributed-systems",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+
+[project.urls]
+Homepage = "https://github.com/smartguy-coder/PrototypeHighlyLoadedDistributedService"
+Repository = "https://github.com/smartguy-coder/PrototypeHighlyLoadedDistributedService"
+Issues = "https://github.com/smartguy-coder/PrototypeHighlyLoadedDistributedService/issues"
+
+[project.optional-dependencies]
+dev = [
+    "build>=1.0",
+    "twine>=5.0",
+    "pytest>=8.0",
+    "pytest-cov>=4.0",
+    "mypy>=1.8",
+    "ruff>=0.3",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["prototype_highly_loaded_distributed_service_utils*"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+
+[tool.pytest.ini_options]
+testpaths = ["prototype_highly_loaded_distributed_service_utils/tests"]
+pythonpath = ["."]

@@ -3,6 +3,9 @@ Pydantic schemas for Kafka messages.
 
 All message schemas should be defined here for type safety
 and automatic validation before publishing to Kafka.
+
+This is the single source of truth for all Kafka message schemas
+across the microservices ecosystem.
 """
 
 from datetime import datetime

@@ -12,6 +12,7 @@ dependencies = [
     "djangorestframework~=3.16.1",
     "djangorestframework-simplejwt>=5.5.1",
     "drf-spectacular>=0.29.0",
+    "prototype-highly-loaded-distributed-service-utils==0.1.5",
     "psycopg[binary]>=3.3.2",
     "pydantic>=2.12.5",
     "python-decouple>=3.8",

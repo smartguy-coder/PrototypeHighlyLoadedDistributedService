@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "prototype-highly-loaded-distributed-service-utils"
-version = "0.1.2"
+version = "0.1.5"
 description = "Shared utilities for PrototypeHighlyLoadedDistributedService microservices"
 readme = "README.md"
 license = {text = "MIT"}
@@ -19,6 +19,9 @@ keywords = [
     "microservices",
     "utilities",
     "distributed-systems",
+    "kafka",
+    "schemas",
+    "topics",
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",

@@ -14,16 +14,16 @@ Import and use directly:
 """
 
 from kafka.producer import BaseKafkaProducer, create_producer
-from kafka.schemas import OTPNotificationSchema
-from kafka.topics import (
-    TOPIC_NOTIFICATIONS_OTP,
+from prototype_highly_loaded_distributed_service_utils.kafka import (
+    KafkaTopic,
+    OTPNotificationSchema,
 )
 
 
 class OTPNotificationProducer(BaseKafkaProducer[OTPNotificationSchema]):
     """Producer for OTP notification messages."""
 
-    topic = TOPIC_NOTIFICATIONS_OTP
+    topic = KafkaTopic.NOTIFICATIONS_OTP
     schema = OTPNotificationSchema
 
 

@@ -22,6 +22,13 @@ Low-level access (for custom use cases):
         "secret_code": "1234",
         ...
     })
+
+Schemas and topics (from shared utils package):
+    from prototype_highly_loaded_distributed_service_utils.kafka import (
+        NotificationChannel,
+        OTPNotificationSchema,
+        KafkaTopic,
+    )
 """
 
 from kafka.producer import (
@@ -33,21 +40,21 @@ from kafka.producer import (
 from kafka.producers import (
     otp_notification_producer,
 )
-from kafka.schemas import (
-    NotificationChannel,
-    OTPNotificationSchema,
-)
 from kafka.services import (
     send_otp_notification,
 )
-from kafka.topics import (
-    TOPIC_NOTIFICATIONS_OTP,
+
+# Re-export schemas and topics from shared package for convenience
+from prototype_highly_loaded_distributed_service_utils.kafka import (
+    KafkaTopic,
+    NotificationChannel,
+    OTPNotificationSchema,
 )
 
 __all__ = [
-    "TOPIC_NOTIFICATIONS_OTP",
     "BaseKafkaProducer",
     "KafkaPublisherException",
+    "KafkaTopic",
     "NotificationChannel",
     "OTPNotificationSchema",
     "create_producer",

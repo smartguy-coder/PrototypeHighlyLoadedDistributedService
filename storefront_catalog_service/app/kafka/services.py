@@ -13,7 +13,10 @@ from datetime import datetime
 
 from kafka.producer import KafkaPublisherException
 from kafka.producers import otp_notification_producer
-from kafka.schemas import NotificationChannel, OTPNotificationSchema
+from prototype_highly_loaded_distributed_service_utils.kafka import (
+    NotificationChannel,
+    OTPNotificationSchema,
+)
 
 logger = logging.getLogger(__name__)
 

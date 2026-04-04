@@ -2,7 +2,7 @@
 Management command to create and manage Kafka topics.
 
 This command:
-1. Creates all topics defined in kafka.topics module
+1. Creates all topics defined in KafkaTopic enum (from shared utils)
 2. Checks and increases partition count if needed
 3. Checks and updates retention settings if needed
 4. Validates replication factor against cluster size
@@ -26,7 +26,7 @@ from django.core.management.base import BaseCommand
 
 from confluent_kafka.admin import AdminClient, ConfigResource, NewTopic  # type: ignore[attr-defined]
 from confluent_kafka.cimpl import NewPartitions
-from kafka import topics
+from prototype_highly_loaded_distributed_service_utils.kafka import KafkaTopic
 
 # Configuration constants
 CONFIG_NAME_RETENTION_MS = "retention.ms"
@@ -37,7 +37,7 @@ DEFAULT_TOPIC_CONFIG = {CONFIG_NAME_RETENTION_MS: str(DEFAULT_RETENTION_MS)}
 
 
 class Command(BaseCommand):
-    help = "Create and manage Kafka topics defined in kafka.topics module"
+    help = "Create and manage Kafka topics defined in KafkaTopic enum"
 
     def add_arguments(self, parser: ArgumentParser) -> None:
         parser.add_argument(
@@ -84,10 +84,6 @@ class Command(BaseCommand):
 
         return config
 
-    def get_topic_names(self) -> list[str]:
-        """Dynamically get all topic names from the topics module."""
-        return [getattr(topics, name) for name in topics.__all__]
-
     def get_cluster_broker_count(self, admin: AdminClient) -> int:
         """Get the number of brokers in the cluster."""
         try:
@@ -99,7 +95,7 @@ class Command(BaseCommand):
 
     def handle(self, *args: Any, **options: Any) -> None:
         kafka_config = self.get_kafka_config(options)
-        topic_names = self.get_topic_names()
+        topic_names = KafkaTopic.all_topics()
         interactive = options.get("interactive", False)
         partitions = options.get("partitions", DEFAULT_PARTITIONS_COUNT)
         replication_factor = options.get("replication_factor", DEFAULT_REPLICATION_FACTOR)
@@ -126,8 +122,8 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING(f"  Adjusting replication factor to {replication_factor}"))
 
         self.stdout.write(f"\nTopics to manage ({len(topic_names)}):")
-        for name in topic_names:
-            self.stdout.write(f"  • {name}")
+        for topic in KafkaTopic:
+            self.stdout.write(f"  • {topic.name}: {topic.value}")
 
         self.stdout.write("\nSettings:")
         self.stdout.write(f"  • Partitions: {partitions}")

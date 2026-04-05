@@ -9,6 +9,7 @@ import logging
 
 from config import settings
 from faststream.kafka import KafkaRouter
+from handlers.utils import send_email, send_sms
 from prototype_highly_loaded_distributed_service_utils.kafka import (
     KafkaTopic,
     NotificationChannel,
@@ -45,13 +46,3 @@ async def handle_otp_notification(message: OTPNotificationSchema) -> None:
             f"Failed to process OTP notification: verification_code={message.verification_code}, error={e}"
         )
         raise
-
-
-async def send_sms(message: OTPNotificationSchema) -> None:
-    logger.info(f"Sending SMS to {message.phone} with secret code {message.secret_code}")
-    # todo implement Turbosms or twillio
-
-
-async def send_email(message: OTPNotificationSchema) -> None:
-    logger.info(f"Sending Email to {message.email} with secret code {message.secret_code}")
-    # TODO: Integrate with email service (SMTP, SendGrid, AWS SES, etc.)

@@ -42,8 +42,6 @@ def create_broker() -> KafkaBroker:
 
 @asynccontextmanager
 async def lifespan(context: ContextRepo) -> AsyncIterator[None]:
-    """Application lifespan context manager."""
-    # === STARTUP ===
     logger.info(f"Starting {settings.service_name}...")
     logger.info(f"Connecting to Kafka: {settings.kafka_bootstrap_servers}")
     logger.info(f"Consumer group: {settings.kafka_consumer_group}")
@@ -55,7 +53,6 @@ async def lifespan(context: ContextRepo) -> AsyncIterator[None]:
 
     yield
 
-    # === SHUTDOWN ===
     logger.info(f"Shutting down {settings.service_name}...")
     logger.info(f"{settings.service_name} shutdown complete")
 

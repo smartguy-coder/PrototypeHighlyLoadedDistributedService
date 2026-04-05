@@ -21,16 +21,9 @@ class Settings(BaseSettings):
     def kafka_bootstrap_servers_list(self) -> list[str]:
         return [s.strip() for s in self.kafka_bootstrap_servers.split(",")]
 
-    class Config:
-        env_prefix = ""
-        case_sensitive = False
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-
 
 @lru_cache
 def get_settings() -> Settings:
-    """Get cached settings instance."""
     return Settings()
 
 

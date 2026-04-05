@@ -27,7 +27,7 @@ from faststream.kafka import KafkaBroker
 from handlers import otp_router
 
 logging.basicConfig(
-    level=settings.log_level,
+    level=settings.LOG_LEVEL,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
@@ -42,19 +42,19 @@ def create_broker() -> KafkaBroker:
 
 @asynccontextmanager
 async def lifespan(context: ContextRepo) -> AsyncIterator[None]:
-    logger.info(f"Starting {settings.service_name}...")
-    logger.info(f"Connecting to Kafka: {settings.kafka_bootstrap_servers}")
-    logger.info(f"Consumer group: {settings.kafka_consumer_group}")
+    logger.info(f"Starting {settings.SERVICE_NAME}...")
+    logger.info(f"Connecting to Kafka: {settings.KAFKA_BOOTSTRAP_SERVERS}")
+    logger.info(f"Consumer group: {settings.KAFKA_CONSUMER_GROUP}")
 
     # Set global context (accessible in handlers via Context())
     context.set_global("settings", settings)
 
-    logger.info(f"{settings.service_name} started successfully")
+    logger.info(f"{settings.SERVICE_NAME} started successfully")
 
     yield
 
-    logger.info(f"Shutting down {settings.service_name}...")
-    logger.info(f"{settings.service_name} shutdown complete")
+    logger.info(f"Shutting down {settings.SERVICE_NAME}...")
+    logger.info(f"{settings.SERVICE_NAME} shutdown complete")
 
 
 def create_app() -> FastStream:

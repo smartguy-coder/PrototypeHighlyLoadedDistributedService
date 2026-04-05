@@ -7,19 +7,19 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     # Service identification
-    service_name: str = "notification-service"
-    log_level: str = "INFO"
+    SERVICE_NAME: str = "notification-service"
+    LOG_LEVEL: str = "INFO"
 
     # Kafka connection (comma-separated string from env)
-    kafka_bootstrap_servers: str = "kafka-1:9092,kafka-2:9092,kafka-3:9092"
+    KAFKA_BOOTSTRAP_SERVERS: str = "kafka-1:9092,kafka-2:9092,kafka-3:9092"
 
     # Kafka consumer settings
-    kafka_consumer_group: str = "notification-service-group"
-    kafka_auto_offset_reset: str = "earliest"
+    KAFKA_CONSUMER_GROUP: str = "notification-service-group"
+    KAFKA_AUTO_OFFSET_RESET: str = "earliest"
 
     @property
     def kafka_bootstrap_servers_list(self) -> list[str]:
-        return [s.strip() for s in self.kafka_bootstrap_servers.split(",")]
+        return [s.strip() for s in self.KAFKA_BOOTSTRAP_SERVERS.split(",")]
 
 
 @lru_cache

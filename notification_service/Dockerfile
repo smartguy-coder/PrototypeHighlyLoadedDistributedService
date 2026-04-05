@@ -29,6 +29,6 @@ EXPOSE 11111
 
 # Run FastStream ASGI app with uvicorn (includes AsyncAPI docs)
 # - main:asgi_app because WORKDIR=/app and main.py is directly in /app/
-# - Docs available at http://localhost:11111/docs
+# - Docs available at http://localhost:11111/
 # - Health check at http://localhost:11111/health
 CMD ["uvicorn", "main:asgi_app", "--host", "0.0.0.0", "--port", "11111"]

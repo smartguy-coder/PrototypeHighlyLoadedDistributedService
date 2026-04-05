@@ -23,8 +23,8 @@ router = KafkaRouter()
 
 @router.subscriber(
     KafkaTopic.NOTIFICATIONS_OTP,
-    group_id=settings.kafka_consumer_group,
-    auto_offset_reset=settings.kafka_auto_offset_reset,
+    group_id=settings.KAFKA_CONSUMER_GROUP,
+    auto_offset_reset=settings.KAFKA_AUTO_OFFSET_RESET,
 )
 async def handle_otp_notification(message: OTPNotificationSchema) -> None:
     logger.info(

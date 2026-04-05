@@ -187,6 +187,40 @@ services:
       - ./storefront_catalog_service_frontend/app:/app
       - /app/node_modules
 
+  # ============================================================================
+  # Notification Service (FastStream Kafka Consumer)
+  # ============================================================================
+  # Consumes messages from Kafka topics and sends notifications via SMS/Email.
+  # Uses FastStream framework for async message processing.
+  # ============================================================================
+  # Endpoints:
+  # - http://localhost:11111/docs   - AsyncAPI documentation
+  # - http://localhost:11111/health - Health check endpoint
+  # ============================================================================
+
+  notification_service:
+    container_name: notification_service
+    hostname: notificationService
+    build:
+      dockerfile: Dockerfile
+      context: ./notification_service
+    restart: unless-stopped
+    ports:
+      - "11111:11111"
+    depends_on:
+      <<: *kafka-depends-on
+    command: ["uvicorn", "main:asgi_app", "--host", "0.0.0.0", "--port", "11111", "--reload"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11111/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    volumes:
+      - ./notification_service/app:/app
+    env_file:
+      - .env
+
 
 volumes:
   kafka-1-data:

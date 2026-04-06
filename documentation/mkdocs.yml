@@ -15,6 +15,7 @@ nav:
     - Overview: technologies/index.md
     - Apache Kafka: technologies/kafka.md
     - PyPI Publishing: technologies/pypi-publishing.md
+    - FastStream: technologies/faststream.md
   - Changelog:
     - Overview: changelog/index.md
     - Storefront Frontend: changelog/storefront-frontend.md

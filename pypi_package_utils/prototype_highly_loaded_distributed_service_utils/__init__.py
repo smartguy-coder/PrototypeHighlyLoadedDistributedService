@@ -4,7 +4,7 @@ Prototype Highly Loaded Distributed Service Utils.
 Shared utilities for microservices ecosystem.
 """
 
-__version__ = "0.1.5"
+__version__ = "0.1.6"
 __author__ = "Vasyl Kartychak"
 
 from prototype_highly_loaded_distributed_service_utils.kafka import (

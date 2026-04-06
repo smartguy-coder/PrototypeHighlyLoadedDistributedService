@@ -1,0 +1,67 @@
+[project]
+name = "notification-service"
+version = "0.1.0"
+description = "Notification service for OTP delivery via SMS and Email using FastStream"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "faststream[kafka,cli]>=0.6.7",
+    "pydantic-settings>=2.0.0",
+    "prototype-highly-loaded-distributed-service-utils==0.1.5",
+    # Kafka compression libraries (required by aiokafka)
+    "lz4>=4.0.0",
+    "python-snappy>=0.7.0",
+    "zstandard>=0.22.0",
+    # ASGI server for serving AsyncAPI docs
+    "uvicorn>=0.30.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
+    "ruff>=0.4.0",
+    "mypy>=1.10.0",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+src = ["app"]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+    "ARG",    # flake8-unused-arguments
+    "SIM",    # flake8-simplify
+]
+ignore = ["E501"]  # line too long (handled by formatter)
+
+[tool.mypy]
+python_version = "3.12"
+explicit_package_bases = true
+mypy_path = "$MYPY_CONFIG_FILE_DIR/app"
+
+# Strict mode settings (selectively enabled)
+warn_return_any = true
+warn_unused_ignores = true
+check_untyped_defs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+no_implicit_optional = true
+strict_equality = true
+
+# Relaxed settings for libraries without type stubs
+ignore_missing_imports = true
+disallow_subclassing_any = false
+disallow_untyped_decorators = false
+
+[tool.bandit]
+exclude_dirs = ["tests", ".venv"]
+skips = ["B101"]  # assert_used - OK in tests

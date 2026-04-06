@@ -32,17 +32,7 @@ class KafkaTopic(StrEnum):
 
     @classmethod
     def all_topics(cls) -> list[str]:
-        """
-        Return a list of all topic names.
-
-        Returns:
-            List of topic name strings.
-
-        Example:
-            >>> KafkaTopic.all_topics()
-            ['notifications.otp']
-        """
-        return [topic.value for topic in cls]
+        return list(cls)
 
 
 __all__ = [

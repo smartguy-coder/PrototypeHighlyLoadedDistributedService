@@ -35,7 +35,7 @@ POSTGRES_PORT = config("POSTGRES_PORT", default="5432")
 PGBOUNCER_HOST = config("PGBOUNCER_HOST", default="pgbouncer")
 PGBOUNCER_PORT = config("PGBOUNCER_PORT", default="6432")
 
-USE_PGBOUNCER = config("USE_PGBOUNCER", default="true", cast=str).lower() == "true"
+USE_PGBOUNCER = config("USE_PGBOUNCER", default=True, cast=bool)
 
 DB_HOST = PGBOUNCER_HOST if USE_PGBOUNCER else POSTGRES_HOST
 DB_PORT = PGBOUNCER_PORT if USE_PGBOUNCER else POSTGRES_PORT

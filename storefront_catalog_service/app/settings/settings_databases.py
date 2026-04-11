@@ -64,6 +64,9 @@ DATABASES = {
     # - CREATE INDEX CONCURRENTLY
     # - Advisory locks
     # - Any operation requiring session-level state
+    # use if needed like MyModel.objects.using("direct").all()
+    # or connections["direct"].cursor()
+    # or DATABASE=direct python manage.py migrate
     # ========================================================================
     "direct": {
         "ENGINE": "django.db.backends.postgresql",

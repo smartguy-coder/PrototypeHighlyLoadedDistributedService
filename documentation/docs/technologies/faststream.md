@@ -13,7 +13,7 @@ FastStream is a powerful Python framework for building asynchronous message cons
 5. [Installation](#installation)
 6. [Our Implementation](#our-implementation)
 7. [Lifespan Context Manager](#lifespan-context-manager)
-8. [ASGI & AsyncAPI Documentation](#asgi--asyncapi-documentation)
+8. [ASGI & AsyncAPI Documentation](#asgi-asyncapi-documentation)
 9. [Message Handling](#message-handling)
 10. [Configuration](#configuration)
 11. [Docker Setup](#docker-setup)

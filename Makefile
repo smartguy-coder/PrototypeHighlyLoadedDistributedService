@@ -86,8 +86,8 @@ makemigrations: ## Create Django migrations
 	docker exec -it $(STOREFRONT_BACKEND_CONTAINER) $(PYTHON) $(MANAGE_PY) makemigrations
 
 .PHONY: migrate
-migrate: ## Apply Django migrations
-	docker exec -it $(STOREFRONT_BACKEND_CONTAINER) $(PYTHON) $(MANAGE_PY) migrate
+migrate: ## Apply Django migrations (bypassing PgBouncer)
+	docker exec -it $(STOREFRONT_BACKEND_CONTAINER) sh -c "USE_PGBOUNCER=false $(PYTHON) $(MANAGE_PY) migrate"
 
 .PHONY: createsuperuser
 createsuperuser: ## Create Django superuser

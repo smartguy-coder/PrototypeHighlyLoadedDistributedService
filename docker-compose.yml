@@ -150,7 +150,87 @@ services:
       KAFKA_CLUSTERS_0_DEFAULTVALUESERDE: String
 
   # ============================================================================
-  # Application Services backend
+  # PostgreSQL + PgBouncer (Connection Pooling)
+  # ============================================================================
+
+  postgres_storefront_catalog_service:
+    image: postgres:17
+    container_name: postgres_storefront_catalog_service
+    hostname: postgres_storefront_catalog_service
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5555:5432"
+    env_file:
+      - .env
+    command: >
+      postgres -c max_connections=100
+               -c shared_buffers=256MB
+               -c effective_cache_size=768MB
+               -c maintenance_work_mem=64MB
+               -c checkpoint_completion_target=0.7
+               -c wal_buffers=16MB
+               -c default_statistics_target=100
+               -c listen_addresses='*'
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: pgbouncer
+    hostname: pgbouncer
+    restart: unless-stopped
+    ports:
+      - "${PGBOUNCER_PORT}:6432"
+    environment:
+      # Database connection settings
+      DB_HOST: ${POSTGRES_HOST}
+      DB_PORT: "${POSTGRES_PORT}"
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: ${POSTGRES_DB}
+      # PgBouncer listen settings
+      LISTEN_PORT: "6432"
+      # Auth settings
+      AUTH_TYPE: scram-sha-256
+      # Pool settings
+      POOL_MODE: ${PGBOUNCER_POOL_MODE}
+      MAX_CLIENT_CONN: ${PGBOUNCER_MAX_CLIENT_CONN}
+      DEFAULT_POOL_SIZE: ${PGBOUNCER_DEFAULT_POOL_SIZE}
+      MIN_POOL_SIZE: ${PGBOUNCER_MIN_POOL_SIZE}
+      RESERVE_POOL_SIZE: 10
+      RESERVE_POOL_TIMEOUT: 5
+      SERVER_RESET_QUERY: "DISCARD ALL"
+      # Admin settings
+      ADMIN_USERS: ${POSTGRES_USER}
+      STATS_USERS: ${POSTGRES_USER}
+      # Logging
+      LOG_CONNECTIONS: 1
+      LOG_DISCONNECTIONS: 1
+    env_file:
+      - .env
+    depends_on:
+      postgres_storefront_catalog_service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 6432"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  # ============================================================================
+  # Application Services
   # ============================================================================
 
   storefront_catalog_service:
@@ -164,9 +244,14 @@ services:
     restart: unless-stopped
     depends_on:
       <<: *kafka-depends-on
+      pgbouncer:
+        condition: service_healthy
     command: |
       sh -c "
-      uv run python manage.py migrate &&
+      echo 'Waiting for PgBouncer...' &&
+      sleep 5 &&
+      echo 'Running migrations directly against PostgreSQL...' &&
+      USE_PGBOUNCER=false uv run python manage.py migrate &&
       uv run python manage.py create_kafka_topics --partitions 3 --replication-factor 3 &&
       uv run python manage.py runserver 0.0.0.0:8000
       "

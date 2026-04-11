@@ -87,12 +87,12 @@ class OTPNotificationSchema(BaseModel):
     )
     expires_at: datetime = Field(
         description="When this OTP expires",
-        examples=["2025-01-15T12:30:00Z"],
+        examples=["2025-01-15T12:30:00"],
     )
     created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=datetime.now,
         description="When this message was created",
-        examples=["2025-01-15T12:25:00Z"],
+        examples=["2025-01-15T12:25:00"],
     )
 
     @model_validator(mode="after")

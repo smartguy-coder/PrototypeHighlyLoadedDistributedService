@@ -11,9 +11,10 @@ PgBouncer is a lightweight connection pooler for PostgreSQL that sits between yo
 3. [Pool Modes](#pool-modes)
 4. [Why PgBouncer in Kubernetes](#why-pgbouncer-in-kubernetes)
 5. [Our Implementation](#our-implementation)
-6. [Configuration](#configuration)
-7. [Django Integration](#django-integration)
-8. [Best Practices](#best-practices)
+6. [Admin Console & Monitoring](#admin-console--monitoring)
+7. [Configuration](#configuration)
+8. [Django Integration](#django-integration)
+9. [Best Practices](#best-practices)
 
 ---
 
@@ -373,6 +374,93 @@ services:
 | `MIN_POOL_SIZE` | Minimum pool size | 10 |
 | `RESERVE_POOL_SIZE` | Reserve connections | 10 |
 | `SERVER_RESET_QUERY` | Query to reset connection | DISCARD ALL |
+
+---
+
+## Admin Console & Monitoring
+
+### Connecting to PgBouncer Admin Console
+
+PgBouncer has a built-in admin console accessible via the special `pgbouncer` database.
+
+```bash
+# From host machine
+psql -h localhost -p 6432 -U postgres pgbouncer
+# Password: postgres
+
+# Or from inside the container
+docker exec -it pgbouncer psql -h 127.0.0.1 -p 6432 -U postgres pgbouncer
+```
+
+### Useful Statistics Commands
+
+| Command | Description |
+|---------|-------------|
+| `SHOW POOLS;` | Active connections per pool (most useful) |
+| `SHOW STATS;` | General statistics per database |
+| `SHOW CLIENTS;` | List of client connections |
+| `SHOW SERVERS;` | List of server connections to PostgreSQL |
+| `SHOW DATABASES;` | Configured databases |
+| `SHOW CONFIG;` | Current configuration |
+| `SHOW STATS_TOTALS;` | Detailed statistics per database |
+| `SHOW STATS_AVERAGES;` | Average values |
+| `SHOW MEM;` | Memory usage |
+| `SHOW LISTS;` | Queue sizes |
+
+### Understanding `SHOW POOLS` Output
+
+```sql
+SHOW POOLS;
+```
+
+```
+ database |   user   | cl_active | cl_waiting | sv_active | sv_idle | sv_used | maxwait
+----------+----------+-----------+------------+-----------+---------+---------+---------
+ mydb     | postgres |         5 |          0 |         3 |      17 |       0 |       0
+```
+
+| Column | Description | Action if High |
+|--------|-------------|----------------|
+| `cl_active` | Active client connections | Normal |
+| `cl_waiting` | Clients waiting for connection | ⚠️ Increase `default_pool_size` |
+| `sv_active` | Active server connections | Normal |
+| `sv_idle` | Idle connections in pool | Can reduce `min_pool_size` |
+| `sv_used` | Connections recently used | Normal |
+| `maxwait` | Longest wait time (seconds) | ⚠️ If > 0, pool is saturated |
+
+### Key Metrics to Monitor
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Healthy Pool State                           │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│   cl_waiting = 0      ← No clients waiting (good!)              │
+│   maxwait = 0         ← No wait time (good!)                    │
+│   sv_idle > 0         ← Available connections (good!)           │
+│                                                                 │
+├─────────────────────────────────────────────────────────────────┤
+│                    Pool Under Pressure                          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│   cl_waiting > 0      ← Clients waiting for connection          │
+│   maxwait > 1         ← Wait time accumulating                  │
+│   sv_idle = 0         ← No available connections                │
+│                                                                 │
+│   ⚠️ Action: Increase default_pool_size or reduce load         │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Admin Commands
+
+| Command | Description |
+|---------|-------------|
+| `RELOAD;` | Reload configuration (pgbouncer.ini) |
+| `PAUSE <db>;` | Pause connections to database |
+| `RESUME <db>;` | Resume connections |
+| `KILL <db>;` | Kill all connections to database |
+| `SHUTDOWN;` | Graceful shutdown |
 
 ---
 

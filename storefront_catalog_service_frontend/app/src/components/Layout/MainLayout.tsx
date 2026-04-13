@@ -33,9 +33,12 @@ import {
   Person as PersonIcon,
   Settings as SettingsIcon,
   Login as LoginIcon,
+  DarkMode as DarkModeIcon,
+  LightMode as LightModeIcon,
 } from "@mui/icons-material";
 import { useOrders } from "../../contexts/OrderContext";
 import { useAuth } from "../../contexts/AuthContext";
+import { useThemeMode } from "../../contexts/ThemeContext";
 
 const drawerWidth = 280;
 
@@ -56,6 +59,7 @@ export default function MainLayout() {
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const { getCartItemCount, orders } = useOrders();
   const { user, isAuthenticated, logout } = useAuth();
+  const { isDarkMode, toggleTheme, colors } = useThemeMode();
 
   const cartItemCount = getCartItemCount();
   const activeOrdersCount = orders.filter(
@@ -145,7 +149,7 @@ export default function MainLayout() {
       <Box
         sx={{
           p: 3,
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          background: colors.gradient,
           color: "white",
         }}
       >
@@ -165,7 +169,7 @@ export default function MainLayout() {
           <Box sx={{ p: 2, display: "flex", alignItems: "center", gap: 2 }}>
             <Avatar
               sx={{
-                bgcolor: "#667eea",
+                bgcolor: theme.palette.primary.main,
                 width: 40,
                 height: 40,
               }}
@@ -192,7 +196,7 @@ export default function MainLayout() {
               startIcon={<LoginIcon />}
               onClick={handleLogin}
               sx={{
-                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                background: colors.gradient,
               }}
             >
               Увійти
@@ -219,18 +223,18 @@ export default function MainLayout() {
                 sx={{
                   borderRadius: 2,
                   backgroundColor: isActive
-                    ? "rgba(102, 126, 234, 0.1)"
+                    ? colors.activeItemBg
                     : "transparent",
                   "&:hover": {
                     backgroundColor: isActive
-                      ? "rgba(102, 126, 234, 0.15)"
-                      : "rgba(0, 0, 0, 0.04)",
+                      ? colors.cardHoverBg
+                      : theme.palette.action.hover,
                   },
                 }}
               >
                 <ListItemIcon
                   sx={{
-                    color: isActive ? "#667eea" : "inherit",
+                    color: isActive ? theme.palette.primary.main : "inherit",
                     minWidth: 44,
                   }}
                 >
@@ -246,7 +250,7 @@ export default function MainLayout() {
                   primary={item.text}
                   primaryTypographyProps={{
                     fontWeight: isActive ? 600 : 400,
-                    color: isActive ? "#667eea" : "inherit",
+                    color: isActive ? theme.palette.primary.main : "inherit",
                   }}
                 />
               </ListItemButton>
@@ -257,32 +261,64 @@ export default function MainLayout() {
 
       <Divider />
 
+      {/* Theme Toggle */}
+      <List sx={{ py: 1 }}>
+        <ListItem disablePadding sx={{ px: 1.5 }}>
+          <ListItemButton
+            onClick={toggleTheme}
+            sx={{
+              borderRadius: 2,
+              "&:hover": {
+                backgroundColor: theme.palette.action.hover,
+              },
+            }}
+          >
+            <ListItemIcon sx={{ minWidth: 44 }}>
+              {isDarkMode ? (
+                <LightModeIcon sx={{ color: "#fbbf24" }} />
+              ) : (
+                <DarkModeIcon sx={{ color: "#6366f1" }} />
+              )}
+            </ListItemIcon>
+            <ListItemText
+              primary={isDarkMode ? "Світла тема" : "Темна тема"}
+              primaryTypographyProps={{
+                fontWeight: 500,
+              }}
+            />
+          </ListItemButton>
+        </ListItem>
+      </List>
+
       {/* Logout Button - only for authenticated users */}
       {isAuthenticated && (
-        <List sx={{ py: 1 }}>
-          <ListItem disablePadding sx={{ px: 1.5 }}>
-            <ListItemButton
-              onClick={handleLogout}
-              sx={{
-                borderRadius: 2,
-                "&:hover": {
-                  backgroundColor: "rgba(244, 67, 54, 0.08)",
-                },
-              }}
-            >
-              <ListItemIcon sx={{ minWidth: 44, color: "error.main" }}>
-                <LogoutIcon />
-              </ListItemIcon>
-              <ListItemText
-                primary="Вийти"
-                primaryTypographyProps={{
-                  color: "error.main",
-                  fontWeight: 500,
+        <>
+          <Divider />
+          <List sx={{ py: 1 }}>
+            <ListItem disablePadding sx={{ px: 1.5 }}>
+              <ListItemButton
+                onClick={handleLogout}
+                sx={{
+                  borderRadius: 2,
+                  "&:hover": {
+                    backgroundColor: "rgba(244, 67, 54, 0.08)",
+                  },
                 }}
-              />
-            </ListItemButton>
-          </ListItem>
-        </List>
+              >
+                <ListItemIcon sx={{ minWidth: 44, color: "error.main" }}>
+                  <LogoutIcon />
+                </ListItemIcon>
+                <ListItemText
+                  primary="Вийти"
+                  primaryTypographyProps={{
+                    color: "error.main",
+                    fontWeight: 500,
+                  }}
+                />
+              </ListItemButton>
+            </ListItem>
+          </List>
+        </>
       )}
 
       <Box sx={{ p: 2, textAlign: "center" }}>
@@ -303,9 +339,9 @@ export default function MainLayout() {
         sx={{
           width: { md: `calc(100% - ${drawerWidth}px)` },
           ml: { md: `${drawerWidth}px` },
-          backgroundColor: "white",
-          color: "text.primary",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+          backgroundColor: colors.appBarBg,
+          color: colors.appBarText,
+          boxShadow: colors.shadow,
         }}
       >
         <Toolbar sx={{ justifyContent: "space-between" }}>
@@ -324,15 +360,30 @@ export default function MainLayout() {
             </Typography>
           </Box>
 
-          {/* User Menu or Login Button */}
-          <Box>
+          {/* Theme Toggle and User Menu */}
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            {/* Theme Toggle in AppBar (visible on mobile) */}
+            <Tooltip title={isDarkMode ? "Світла тема" : "Темна тема"}>
+              <IconButton
+                onClick={toggleTheme}
+                color="inherit"
+                sx={{ display: { xs: "flex", md: "none" } }}
+              >
+                {isDarkMode ? (
+                  <LightModeIcon sx={{ color: "#fbbf24" }} />
+                ) : (
+                  <DarkModeIcon sx={{ color: "#6366f1" }} />
+                )}
+              </IconButton>
+            </Tooltip>
+
             {isAuthenticated ? (
               <>
                 <Tooltip title="Профіль">
                   <IconButton onClick={handleProfileMenuOpen} sx={{ p: 0.5 }}>
                     <Avatar
                       sx={{
-                        bgcolor: "#667eea",
+                        bgcolor: theme.palette.primary.main,
                         width: 36,
                         height: 36,
                         fontSize: "0.9rem",
@@ -387,8 +438,7 @@ export default function MainLayout() {
                 onClick={handleLogin}
                 size="small"
                 sx={{
-                  background:
-                    "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                  background: colors.gradient,
                 }}
               >
                 Увійти
@@ -414,6 +464,7 @@ export default function MainLayout() {
             "& .MuiDrawer-paper": {
               boxSizing: "border-box",
               width: drawerWidth,
+              backgroundColor: theme.palette.background.paper,
             },
           }}
         >
@@ -428,7 +479,8 @@ export default function MainLayout() {
             "& .MuiDrawer-paper": {
               boxSizing: "border-box",
               width: drawerWidth,
-              borderRight: "1px solid rgba(0,0,0,0.08)",
+              borderRight: `1px solid ${theme.palette.divider}`,
+              backgroundColor: theme.palette.background.paper,
             },
           }}
           open
@@ -444,7 +496,7 @@ export default function MainLayout() {
           flexGrow: 1,
           p: 3,
           width: { md: `calc(100% - ${drawerWidth}px)` },
-          backgroundColor: "#f5f7fa",
+          backgroundColor: theme.palette.background.default,
           minHeight: "100vh",
         }}
       >

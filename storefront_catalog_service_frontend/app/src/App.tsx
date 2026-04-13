@@ -1,8 +1,8 @@
 import { Routes, Route, Navigate } from "react-router";
-import { ThemeProvider, createTheme } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import { OrderProvider } from "./contexts/OrderContext";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { ThemeProvider } from "./contexts/ThemeContext";
 import MainLayout from "./components/Layout/MainLayout";
 import ProtectedRoute from "./components/Auth/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
@@ -15,79 +15,12 @@ import Login from "./pages/Login";
 import LoginOTP from "./pages/LoginOTP";
 import Register from "./pages/Register";
 import Profile from "./pages/Profile";
-import { Box, CircularProgress } from "@mui/material";
-
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: "#667eea",
-      light: "#8f9ff2",
-      dark: "#4a5db8",
-    },
-    secondary: {
-      main: "#764ba2",
-      light: "#9470b8",
-      dark: "#5a3780",
-    },
-    background: {
-      default: "#f5f7fa",
-      paper: "#ffffff",
-    },
-  },
-  typography: {
-    fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
-    h4: {
-      fontWeight: 700,
-    },
-    h5: {
-      fontWeight: 600,
-    },
-    h6: {
-      fontWeight: 600,
-    },
-  },
-  shape: {
-    borderRadius: 12,
-  },
-  components: {
-    MuiButton: {
-      styleOverrides: {
-        root: {
-          textTransform: "none",
-          fontWeight: 600,
-          borderRadius: 8,
-        },
-      },
-    },
-    MuiCard: {
-      styleOverrides: {
-        root: {
-          borderRadius: 16,
-        },
-      },
-    },
-    MuiPaper: {
-      styleOverrides: {
-        root: {
-          borderRadius: 16,
-        },
-      },
-    },
-    MuiTextField: {
-      styleOverrides: {
-        root: {
-          "& .MuiOutlinedInput-root": {
-            borderRadius: 8,
-          },
-        },
-      },
-    },
-  },
-});
+import { Box, CircularProgress, useTheme } from "@mui/material";
 
 // Redirect authenticated users away from auth pages
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
+  const theme = useTheme();
 
   if (isLoading) {
     return (
@@ -97,7 +30,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
           justifyContent: "center",
           alignItems: "center",
           minHeight: "100vh",
-          backgroundColor: "#f5f7fa",
+          backgroundColor: theme.palette.background.default,
         }}
       >
         <CircularProgress size={48} />
@@ -114,6 +47,8 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 
 // Loading component
 function LoadingScreen() {
+  const theme = useTheme();
+
   return (
     <Box
       sx={{
@@ -121,7 +56,7 @@ function LoadingScreen() {
         justifyContent: "center",
         alignItems: "center",
         minHeight: "100vh",
-        backgroundColor: "#f5f7fa",
+        backgroundColor: theme.palette.background.default,
       }}
     >
       <CircularProgress size={48} />
@@ -211,7 +146,7 @@ function AppContent() {
 
 function App() {
   return (
-    <ThemeProvider theme={theme}>
+    <ThemeProvider>
       <CssBaseline />
       <AuthProvider>
         <OrderProvider>

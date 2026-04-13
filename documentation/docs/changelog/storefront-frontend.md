@@ -3,7 +3,15 @@
 React-based customer-facing web application.
 
 **Tech Stack:** React 19, TypeScript, Vite 7, Material UI 7
+---
 
+## 0.3.0 — 2026-04-13
+
+[:octicons-git-pull-request-16: PR #12](https://github.com/smartguy-coder/PrototypeHighlyLoadedDistributedService/pull/12)
+
+### :material-plus: Added
+
+- initial UI (ClaudeCode Opus 4.5)
 ---
 
 ## 0.2.0 — 2026-03-28

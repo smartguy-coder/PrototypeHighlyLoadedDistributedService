@@ -13,6 +13,15 @@ Django REST API for storefront operations — user management, catalog, and orde
 - PostgreSQL as database (via pgbouncer)
 
 ---
+## 0.7.0 — 2026-04-13
+
+[:octicons-git-pull-request-16: PR #12](https://github.com/smartguy-coder/PrototypeHighlyLoadedDistributedService/pull/12)
+
+### :material-plus: Added
+
+- CORS support
+
+---
 
 ## 0.5.0 — 2026-03-28
 

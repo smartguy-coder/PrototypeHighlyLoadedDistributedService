@@ -7,6 +7,9 @@ db.sqlite3
 
 .env
 
+# Database persistent storage (bind mount)
+/data/
+
 # pypi package
 /pypi_package_utils/uv.lock
 /pypi_package_utils/build/

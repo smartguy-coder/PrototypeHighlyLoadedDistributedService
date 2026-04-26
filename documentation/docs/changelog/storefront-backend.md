@@ -4,15 +4,16 @@ Django REST API for storefront operations — user management, catalog, and orde
 
 **Tech Stack:** Django 6, Django REST Framework, PostgreSQL
 
-## 0.6.0 — 2026-03-28
+## 0.8.0 — 2026-04-25
 
-[:octicons-git-pull-request-16: PR #11](https://github.com/smartguy-coder/PrototypeHighlyLoadedDistributedService/pull/11)
+[:octicons-git-pull-request-16: PR #13](https://github.com/smartguy-coder/PrototypeHighlyLoadedDistributedService/pull/13)
 
 ### :material-plus: Added
 
-- PostgreSQL as database (via pgbouncer)
+- Celery + celery-beat
 
 ---
+
 ## 0.7.0 — 2026-04-13
 
 [:octicons-git-pull-request-16: PR #12](https://github.com/smartguy-coder/PrototypeHighlyLoadedDistributedService/pull/12)
@@ -20,6 +21,16 @@ Django REST API for storefront operations — user management, catalog, and orde
 ### :material-plus: Added
 
 - CORS support
+
+---
+
+## 0.6.0 — 2026-04-08
+
+[:octicons-git-pull-request-16: PR #11](https://github.com/smartguy-coder/PrototypeHighlyLoadedDistributedService/pull/11)
+
+### :material-plus: Added
+
+- PostgreSQL as database (via pgbouncer)
 
 ---
 

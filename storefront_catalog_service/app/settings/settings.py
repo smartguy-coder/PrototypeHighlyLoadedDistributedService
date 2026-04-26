@@ -3,6 +3,7 @@ from pathlib import Path  # type: ignore
 from decouple import Csv, config
 
 from settings.settings_auth import *  # noqa: F403  # type: ignore
+from settings.settings_celery import *  # noqa: F403  # type: ignore
 from settings.settings_databases import *  # noqa: F403  # type: ignore
 from settings.settings_drf import *  # noqa: F403  # type: ignore
 from settings.settings_kafka import *  # noqa: F403  # type: ignore
@@ -35,6 +36,7 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "rest_framework_simplejwt",
     "rest_framework",
+    "django_celery_beat",
     # Local apps
     "apps.users",
     "apps.services",

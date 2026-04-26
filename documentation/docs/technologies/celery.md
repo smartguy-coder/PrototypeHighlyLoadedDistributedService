@@ -68,36 +68,36 @@ Typical use cases:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                           Celery Architecture                              │
+│                           Celery Architecture                               │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │   ┌─────────────────┐                                                       │
-│   │  Django App      │                                                       │
-│   │  (Producer)      │                                                       │
-│   │                  │   .delay() / .apply_async()                           │
-│   │  task.delay(arg) │──────────────────────┐                                │
-│   └─────────────────┘                       │                                │
-│                                              ▼                               │
-│   ┌─────────────────┐              ┌─────────────────┐                       │
-│   │  Celery Beat     │              │    RabbitMQ      │                       │
-│   │  (Scheduler)     │─────────────►│    (Broker)      │                       │
-│   │                  │  periodic    │                  │                       │
-│   │  every 5 min:    │  tasks       │  ┌────────────┐  │                       │
-│   │  cleanup_otp     │              │  │ Q: default  │  │                       │
-│   └─────────────────┘              │  │ Q: emails   │  │                       │
-│                                     │  │ Q: heavy    │  │                       │
-│                                     │  └────────────┘  │                       │
-│                                     └────────┬─────────┘                       │
-│                                              │                                │
-│                                              ▼                                │
-│                                    ┌─────────────────┐                        │
-│                                    │  Celery Worker   │                        │
-│                                    │  (Consumer)      │                        │
-│                                    │                  │                        │
-│                                    │  -Q default,     │                        │
-│                                    │     emails,      │                        │
-│                                    │     heavy        │                        │
-│                                    └─────────────────┘                        │
+│   │  Django App     │                                                       │
+│   │  (Producer)     │                                                       │
+│   │                 │   .delay() / .apply_async()                           │
+│   │  task.delay(arg)│───────────────────────┐                               │
+│   └─────────────────┘                       │                               │
+│                                             ▼                               │
+│   ┌─────────────────┐              ┌─────────────────┐                      │
+│   │  Celery Beat    │              │    RabbitMQ     │                      │
+│   │  (Scheduler)    │─────────────►│    (Broker)     │                      │
+│   │                 │  periodic    │                 │                      │
+│   │  every 5 min:   │  tasks       │  ┌────────────┐ │                      │
+│   │  cleanup_otp    │              │  │ Q: default │ │                      │
+│   └─────────────────┘              │  │ Q: emails  │ │                      │
+│                                    │  │ Q: heavy   │ │                      │
+│                                    │  └────────────┘ │                      │
+│                                    └────────┬────────┘                      │
+│                                             │                               │
+│                                             ▼                               │
+│                                    ┌─────────────────┐                      │
+│                                    │  Celery Worker  │                      │
+│                                    │  (Consumer)     │                      │
+│                                    │                 │                      │
+│                                    │  -Q default,    │                      │
+│                                    │     emails,     │                      │
+│                                    │     heavy       │                      │
+│                                    └─────────────────┘                      │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -121,15 +121,15 @@ Typical use cases:
 ├───────────────────────────────────────────────────────────────────┤
 │                                                                   │
 │  ┌──────────────────┐   ┌──────────────────┐                      │
-│  │  rabbitmq         │   │  celery_worker    │                      │
-│  │  Port: 5672       │◄──│  -Q default,      │                      │
-│  │  UI:   15672      │   │     emails,heavy  │                      │
+│  │  rabbitmq        │   │  celery_worker   │                      │
+│  │  Port: 5672      │◄──│  -Q default,     │                      │
+│  │  UI:   15672     │   │     emails,heavy │                      │
 │  └──────────────────┘   └──────────────────┘                      │
 │          ▲                                                        │
 │          │                                                        │
 │  ┌───────┴──────────┐   ┌──────────────────┐                      │
-│  │  celery_beat      │   │  flower           │                      │
-│  │  DatabaseScheduler│   │  Port: 5556       │                      │
+│  │ celery_beat      │   │  flower          │                      │
+│  │ DatabaseScheduler│   │  Port: 5556      │                      │
 │  └──────────────────┘   └──────────────────┘                      │
 │                                                                   │
 └───────────────────────────────────────────────────────────────────┘
@@ -266,7 +266,7 @@ add.apply_async(args=(2, 3), eta=datetime.now(timezone.utc) + timedelta(seconds=
 │   │ App  │───►│ RabbitMQ │─►│ Worker       │─►│ Worker       │  │
 │   │ send │    │ queue    │  │ receives msg │  │ executes     │  │
 │   └──────┘    └──────────┘  │ holds 60s    │  │ the task     │  │
-│                              └──────────────┘  └──────────────┘  │
+│                             └──────────────┘  └──────────────┘  │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -355,20 +355,20 @@ add.si(10, 20)  # → always called as add(10, 20), regardless of previous resul
 │  .s() — Mutable (result IS passed)                              │
 │  ─────────────────────────────────                              │
 │  chain(                                                         │
-│      add.s(2, 3),      # → 5                                   │
-│      multiply.s(10),   # → multiply(5, 10) = 50                │
-│      add.s(100),       # → add(50, 100) = 150                  │
+│      add.s(2, 3),      # → 5                                    │
+│      multiply.s(10),   # → multiply(5, 10) = 50                 │
+│      add.s(100),       # → add(50, 100) = 150                   │
 │  )                                                              │
-│  Result flows: 5 → 50 → 150                                    │
+│  Result flows: 5 → 50 → 150                                     │
 │                                                                 │
 │  ───────────────────────────────────────────────────────────────│
 │                                                                 │
 │  .si() — Immutable (result is IGNORED)                          │
 │  ─────────────────────────────────────                          │
 │  chain(                                                         │
-│      add.si(2, 3),       # → 5   (discarded)                   │
-│      multiply.si(4, 5),  # → 20  (does NOT receive 5)          │
-│      add.si(10, 20),     # → 30  (does NOT receive 20)         │
+│      add.si(2, 3),       # → 5   (discarded)                    │
+│      multiply.si(4, 5),  # → 20  (does NOT receive 5)           │
+│      add.si(10, 20),     # → 30  (does NOT receive 20)          │
 │  )                                                              │
 │  No result flow — each task is independent                      │
 │                                                                 │
@@ -408,10 +408,10 @@ pipeline.apply_async()
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                    chain with .s()                               │
+│                    chain with .s()                              │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│   add(2, 3) ──► multiply(5, 10) ──► add(50, 100)               │
+│   add(2, 3) ──► multiply(5, 10) ──► add(50, 100)                │
 │       │              │                    │                     │
 │       ▼              ▼                    ▼                     │
 │       5              50                  150                    │
@@ -433,10 +433,10 @@ pipeline.apply_async()
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                    chain with .si()                              │
+│                    chain with .si()                             │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│   add(2, 3) ──► multiply(4, 5) ──► add(10, 20)                 │
+│   add(2, 3) ──► multiply(4, 5) ──► add(10, 20)                  │
 │       │              │                    │                     │
 │       ▼              ▼                    ▼                     │
 │       5              20                   30                    │
@@ -471,7 +471,7 @@ result = parallel.apply_async()
 │                                                                 │
 │           ┌── add(1, 2) ──► 3  ──┐                              │
 │           │                      │                              │
-│   START ──┼── add(3, 4) ──► 7  ──┼──► [3, 7, 11]               │
+│   START ──┼── add(3, 4) ──► 7  ──┼──► [3, 7, 11]                │
 │           │                      │                              │
 │           └── add(5, 6) ──► 11 ──┘                              │
 │                                                                 │
@@ -504,7 +504,7 @@ task_group.apply_async()
 │   HEADER (parallel):                                            │
 │           ┌── add(1, 2) ──► 3  ──┐                              │
 │           │                      │                              │
-│   START ──┼── add(3, 4) ──► 7  ──┼──► aggregate([3, 7, 11])    │
+│   START ──┼── add(3, 4) ──► 7  ──┼──► aggregate([3, 7, 11])     │
 │           │                      │           │                  │
 │           └── add(5, 6) ──► 11 ──┘           ▼                  │
 │                                              21                 │
@@ -533,7 +533,7 @@ task_group.apply_async()
 │   HEADER (parallel):                                            │
 │           ┌── add(1, 2) ──► 3  ──┐                              │
 │           │                      │                              │
-│   START ──┼── add(3, 4) ──► 7  ──┼──► multiply(10, 20)         │
+│   START ──┼── add(3, 4) ──► 7  ──┼──► multiply(10, 20)          │
 │           │                      │           │                  │
 │           └── add(5, 6) ──► 11 ──┘           ▼                  │
 │                                 (ignored)   200                 │
@@ -568,24 +568,24 @@ task_group.apply_async()
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                   Celery Beat Lifecycle                          │
+│                   Celery Beat Lifecycle                         │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  1. Beat starts with DatabaseScheduler                          │
 │  2. Reads CELERY_BEAT_SCHEDULE from settings → syncs to DB      │
 │  3. Reads all PeriodicTask entries from DB                      │
-│  4. Every tick (~5s), checks what tasks are due                  │
+│  4. Every tick (~5s), checks what tasks are due                 │
 │  5. Sends due tasks to the broker (RabbitMQ)                    │
 │  6. Worker picks up and executes the task                       │
 │                                                                 │
-│   ┌────────────┐    ┌──────────┐    ┌────────────┐    ┌────────┐│
-│   │  Django DB  │───►│  Beat    │───►│  RabbitMQ  │───►│ Worker ││
-│   │ (schedule) │    │(scheduler)│    │  (broker)  │    │        ││
-│   └────────────┘    └──────────┘    └────────────┘    └────────┘│
+│   ┌───────────┐    ┌───────────┐    ┌────────────┐    ┌────────┐│
+│   │ Django DB │───►│  Beat     │───►│  RabbitMQ  │───►│ Worker ││
+│   │(schedule) │    │(scheduler)│    │  (broker)  │    │        ││
+│   └───────────┘    └───────────┘    └────────────┘    └────────┘│
 │         ▲                                                       │
 │         │                                                       │
 │   ┌─────┴──────┐                                                │
-│   │ Django     │  Add/edit periodic tasks at runtime             │
+│   │ Django     │  Add/edit periodic tasks at runtime            │
 │   │ Admin UI   │                                                │
 │   └────────────┘                                                │
 │                                                                 │
@@ -1157,22 +1157,3 @@ def my_task(self):
     print(f"retries={self.request.retries}")
     print(f"delivery_info={self.request.delivery_info}")
 ```
-
----
-
-## Further Reading
-
-- [Celery Documentation](https://docs.celeryq.dev/)
-- [Django Celery Beat](https://django-celery-beat.readthedocs.io/)
-- [Canvas: Designing Work-flows](https://docs.celeryq.dev/en/stable/userguide/canvas.html)
-- [RabbitMQ Documentation](https://www.rabbitmq.com/documentation.html)
-- [Flower Monitoring](https://flower.readthedocs.io/)
-
----
-
-## Related Documentation
-
-- [Technologies Overview](index.md)
-- [Apache Kafka](kafka.md) — event streaming (complementary to Celery)
-- [Architecture Diagrams](../about/diagrams.md)
-- [Quick Start Guide](../guides/quickstart.md)

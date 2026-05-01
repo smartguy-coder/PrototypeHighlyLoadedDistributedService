@@ -1281,6 +1281,7 @@ dependencies = [
     { name = "pydantic" },
     { name = "python-decouple" },
     { name = "rabbitmq" },
+    { name = "rich" },
     { name = "sentry-sdk", extra = ["django"] },
 ]
 
@@ -1320,6 +1321,7 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.12.5" },
     { name = "python-decouple", specifier = ">=3.8" },
     { name = "rabbitmq", specifier = ">=0.2.0" },
+    { name = "rich", specifier = ">=14.3.3" },
     { name = "sentry-sdk", extras = ["django"], specifier = ">=2.52.0" },
 ]
 

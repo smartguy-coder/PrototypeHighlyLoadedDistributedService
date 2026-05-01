@@ -1,6 +1,14 @@
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from enum import StrEnum
 from typing import Any
+
+
+class CeleryQueueEnum(StrEnum):
+    DEFAULT = "default"
+    EMAILS = "emails"
+    HEAVY = "heavy"
+
 
 TaskPayload = dict[str, Any]
 

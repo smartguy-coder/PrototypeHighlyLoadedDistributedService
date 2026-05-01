@@ -1,13 +1,14 @@
 from decouple import config
 from kombu import Queue
+from utils.celery import CeleryQueueEnum
 
 CELERY_TASK_QUEUES = (
-    Queue("default"),
-    Queue("emails"),
-    Queue("heavy"),
+    Queue(CeleryQueueEnum.DEFAULT),
+    Queue(CeleryQueueEnum.EMAILS),
+    Queue(CeleryQueueEnum.HEAVY),
 )
 
-CELERY_TASK_DEFAULT_QUEUE = "default"
+CELERY_TASK_DEFAULT_QUEUE = CeleryQueueEnum.DEFAULT
 
 CELERY_BROKER_URL = config("CELERY_BROKER_URL", default="amqp://guest:guest@rabbitmq:5672//")
 CELERY_ACCEPT_CONTENT = ["json"]
@@ -45,11 +46,11 @@ CELERY_BEAT_SCHEDULE = {
     "periodic-test-every-minute": {
         "task": "services.periodic_test_task",
         "schedule": 60.0,  # seconds (every minute)
-        "options": {"queue": "default"},
+        "options": {"queue": CeleryQueueEnum.DEFAULT},
     },
     "cleanup-expired-otp-codes-every-5-min": {
         "task": "users.cleanup_expired_otp_codes",
         "schedule": 300.0,  # every 5 minutes
-        "options": {"queue": "default"},
+        "options": {"queue": CeleryQueueEnum.DEFAULT},
     },
 }

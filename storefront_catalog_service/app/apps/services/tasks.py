@@ -4,27 +4,28 @@ import logging
 from datetime import UTC, datetime
 
 from celery import Task, chain, chord, shared_task
+from utils.celery import CeleryQueueEnum
 
 logger = logging.getLogger(__name__)
 
 
-@shared_task(queue="default", bind=True)
+@shared_task(queue=CeleryQueueEnum.DEFAULT, bind=True)
 def simple_task(self: Task[..., None]) -> None:
     logger.info("[simple_task] started | task_id=%s retries=%s", self.request.id, self.request.retries)
     logger.info("[simple_task] finished successfully | task_id=%s", self.request.id)
 
 
-@shared_task(queue="emails")
+@shared_task(queue=CeleryQueueEnum.EMAILS)
 def send_email() -> None:
     logger.info("[send_email] started")
 
 
-@shared_task(queue="heavy")
+@shared_task(queue=CeleryQueueEnum.HEAVY)
 def heavy_task() -> None:
     logger.info("[heavy_task] started — will crash")
 
 
-@shared_task(queue="default", bind=True, name="services.periodic_test_task")
+@shared_task(queue=CeleryQueueEnum.DEFAULT, bind=True, name="services.periodic_test_task")
 def periodic_test_task(self: Task[..., None]) -> None:
     now = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
     logger.info(
@@ -38,7 +39,7 @@ def periodic_test_task(self: Task[..., None]) -> None:
 # ============================================================================
 
 
-@shared_task(queue="default")
+@shared_task(queue=CeleryQueueEnum.DEFAULT)
 def add(x: int, y: int) -> int:
     """Return the sum of two integers.
 
@@ -51,7 +52,7 @@ def add(x: int, y: int) -> int:
     return result
 
 
-@shared_task(queue="default")
+@shared_task(queue=CeleryQueueEnum.DEFAULT)
 def multiply(x: int, y: int) -> int:
     """Return the product of two integers.
 
@@ -63,7 +64,7 @@ def multiply(x: int, y: int) -> int:
     return result
 
 
-@shared_task(queue="default")
+@shared_task(queue=CeleryQueueEnum.DEFAULT)
 def aggregate(results: list[int]) -> int:
     """Sum a list of integers.
 
@@ -80,7 +81,7 @@ def aggregate(results: list[int]) -> int:
 # ============================================================================
 
 
-@shared_task(queue="default", bind=True)
+@shared_task(queue=CeleryQueueEnum.DEFAULT, bind=True)
 def demo_chain_with_s(self: Task[..., None]) -> None:
     """Demonstrate `chain` using mutable signatures (`.s()`).
 
@@ -102,7 +103,7 @@ def demo_chain_with_s(self: Task[..., None]) -> None:
     logger.info("[demo_chain_with_s] dispatched chain | root_id=%s", result.id)
 
 
-@shared_task(queue="default", bind=True)
+@shared_task(queue=CeleryQueueEnum.DEFAULT, bind=True)
 def demo_chain_with_si(self: Task[..., None]) -> None:
     """Demonstrate `chain` using immutable signatures (`.si()`).
 
@@ -130,7 +131,7 @@ def demo_chain_with_si(self: Task[..., None]) -> None:
 # ============================================================================
 
 
-@shared_task(queue="default", bind=True)
+@shared_task(queue=CeleryQueueEnum.DEFAULT, bind=True)
 def demo_chord_with_s(self: Task[..., None]) -> None:
     """Demonstrate `chord` using mutable signatures (`.s()`).
 
@@ -152,7 +153,7 @@ def demo_chord_with_s(self: Task[..., None]) -> None:
     logger.info("[demo_chord_with_s] dispatched chord | root_id=%s", result.id)
 
 
-@shared_task(queue="default", bind=True)
+@shared_task(queue=CeleryQueueEnum.DEFAULT, bind=True)
 def demo_chord_with_si(self: Task[..., None]) -> None:
     """Demonstrate `chord` using immutable signatures (`.si()`).
 

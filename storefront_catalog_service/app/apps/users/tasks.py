@@ -6,13 +6,14 @@ from typing import Any
 from django.utils import timezone as dj_timezone
 
 from celery import Task, shared_task
+from utils.celery import CeleryQueueEnum
 
 from apps.users.models import OTPCode
 
 logger = logging.getLogger(__name__)
 
 
-@shared_task(queue="default", bind=True)
+@shared_task(queue=CeleryQueueEnum.DEFAULT, bind=True)
 def simple_task_with_defined_time(self: Task[..., None], data: Any) -> None:
     # use apply_async + eta param
     logger.info(
@@ -24,7 +25,7 @@ def simple_task_with_defined_time(self: Task[..., None], data: Any) -> None:
     logger.info("[simple_task_with_defined_time] finished successfully | task_id=%s", self.request.id)
 
 
-@shared_task(queue="default", bind=True, name="users.cleanup_expired_otp_codes")
+@shared_task(queue=CeleryQueueEnum.DEFAULT, bind=True, name="users.cleanup_expired_otp_codes")
 def cleanup_expired_otp_codes(self: Task[..., None]) -> None:
     """Delete OTPCode records that expired more than 5 minutes ago."""
     cutoff = dj_timezone.now()

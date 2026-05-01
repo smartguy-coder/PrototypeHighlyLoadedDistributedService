@@ -1,6 +1,6 @@
 # Pre-commit configuration for PrototypeHighlyLoadedDistributedService
 # Covers: storefront_catalog_service (Django), notification_service (FastStream), storefront_catalog_service_frontend (React/TS)
-
+# todo fix it
 default_language_version:
   python: python3.12
 

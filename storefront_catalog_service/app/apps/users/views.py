@@ -1,3 +1,4 @@
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from rest_framework import generics, permissions, status
@@ -15,6 +16,8 @@ from apps.users.serializers import (
     UserCreateSerializer,
     UserSerializer,
 )
+
+from .tasks import simple_task_with_defined_time
 
 
 class EmailOrPhoneTokenObtainPairView(TokenObtainPairView):
@@ -406,6 +409,9 @@ Request a one-time password for passwordless authentication.
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         result = serializer.save()
+
+        simple_task_with_defined_time.apply_async(args=("some data",), eta=datetime.now(UTC) + timedelta(minutes=1))
+
         return Response(result, status=status.HTTP_200_OK)
 
 

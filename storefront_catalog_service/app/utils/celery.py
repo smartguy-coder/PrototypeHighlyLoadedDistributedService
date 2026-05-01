@@ -190,7 +190,7 @@ def normalize_task(
 
 def sort_key(task: NormalizedTask) -> tuple[bool, str, str, str]:
     has_eta = task.eta not in ("-", "")
-    return (not has_eta, task.eta, task.name, task.id)
+    return not has_eta, task.eta, task.name, task.id
 
 
 def build_worker_view(

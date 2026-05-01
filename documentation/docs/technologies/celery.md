@@ -17,7 +17,8 @@ Celery is a distributed task queue for processing work asynchronously. Django Ce
 9. [Configuration](#configuration)
 10. [Usage Examples](#usage-examples)
 11. [Monitoring with Flower](#monitoring-with-flower)
-12. [Troubleshooting](#troubleshooting)
+12. [Management Commands](#management-commands)
+13. [Troubleshooting](#troubleshooting)
 13. [Best Practices](#best-practices)
 
 ---
@@ -940,6 +941,73 @@ docker compose --profile ui up -d flower
 **Credentials:** `guest` / `guest`
 
 Shows queue depths, connections, channels, message rates — useful for diagnosing broker-level issues.
+
+---
+
+## Management Commands
+
+### `celery_worker_report` — Terminal Analog for Flower UI
+
+**Location:** `storefront_catalog_service/app/apps/services/management/commands/celery_worker_report.py`
+
+A Django management command that displays the current state of all Celery workers and their tasks directly in the terminal — without needing Flower or any browser. Internally uses `CeleryWorkersClient` (see `utils/celery.py`) to query the live Celery inspect API.
+
+```bash
+python manage.py celery_worker_report [OPTIONS]
+```
+
+#### Output
+
+The command renders two levels of output using the `rich` library:
+
+1. **Summary table** — one row per worker, showing pool type, concurrency, and task counts per state.
+2. **Per-worker task tables** — one table per worker/state combination, showing task name, ETA, start/received time, and run time.
+
+#### Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--worker WORKER` | all workers | Filter output to a specific worker by name |
+| `--state {active,reserved,scheduled,all}` | `all` | Show only tasks in the given state |
+| `--limit N` | `10` | Max task rows per worker/state table |
+| `--show-payload` | off | Add **Args** and **Kwargs** columns to the task table |
+| `--show-task-id` | off | Add **Task ID** column to the task table |
+
+#### Task States
+
+| State | Colour | Meaning |
+|-------|--------|---------|
+| `active` | green | Currently executing on a worker |
+| `reserved` | yellow | Prefetched by a worker, waiting to run |
+| `scheduled` | cyan | Deferred via ETA/countdown, not yet ready |
+
+#### Examples
+
+```bash
+# Show all workers and all task states (default)
+python manage.py celery_worker_report
+
+# Show only active tasks on a specific worker
+python manage.py celery_worker_report --worker celery@worker-1 --state active
+
+# Show up to 5 reserved tasks with args/kwargs visible
+python manage.py celery_worker_report --state reserved --limit 5 --show-payload
+
+# Show task IDs for debugging
+python manage.py celery_worker_report --show-task-id
+```
+
+#### When to Use
+
+| Situation | Tool |
+|-----------|------|
+| Quick terminal check during development | `celery_worker_report` |
+| CI/CD health check without browser | `celery_worker_report` |
+| Full real-time task stream & history | Flower UI (`localhost:5556`) |
+| Broker queue depths & message rates | RabbitMQ UI (`localhost:15672`) |
+
+!!! tip
+    The command exits with a non-zero code (`CommandError`) if no workers are reachable or the specified `--worker` is not found — safe to use in scripts and health checks.
 
 ---
 

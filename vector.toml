@@ -1,6 +1,17 @@
+# Collect logs only from containers that opt in via the `logging=vector`
+# Docker label. This avoids parsing noise from Kafka brokers, Postgres,
+# RabbitMQ, UIs, ClickHouse, and Vector itself (which would otherwise
+# create a feedback loop). New services join the pipeline by adding the
+# label in docker-compose.yml — no edits to this file required.
 [sources.docker_logs]
 type = "docker_logs"
+include_labels = ["logging=vector"]
 
+# Application services emit JSON lines via the `python-json-logger` package
+# (https://pypi.org/project/python-json-logger/), configured in each service's
+# logging settings. The presence of `asctime` in the parsed object is what
+# distinguishes our structured logs from any other JSON that might appear
+# on stdout (e.g. health-check probes, framework boot banners).
 [transforms.parse_json]
 type = "remap"
 inputs = ["docker_logs"]
@@ -48,7 +59,18 @@ timestamp_str = format_timestamp!(ts, "%Y-%m-%d %H:%M:%S%.3f")
 }
 '''
 
-# Temporary: print to stdout so we can inspect the exact payload
+# Debug-only sink: prints every transformed event to Vector's stdout so we can
+# inspect the exact payload that's being sent to ClickHouse (`docker logs vector`).
+# Useful while iterating on the VRL transform or schema, since errors from the
+# ClickHouse sink (e.g. 400 Bad Request on unknown fields) don't show the
+# offending payload.
+#
+# Safe to leave enabled because `include_labels = ["logging=vector"]` in the
+# source filters out the `vector` container itself, so this stdout output is
+# NOT re-ingested — no feedback loop.
+#
+# Remove (or comment out) once the pipeline is stable to reduce noise in
+# `docker logs vector` and save a small amount of CPU on JSON re-encoding.
 [sinks.console_debug]
 type = "console"
 inputs = ["parse_json"]

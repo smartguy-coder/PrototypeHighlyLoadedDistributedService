@@ -239,6 +239,8 @@ services:
   storefront_catalog_service:
     container_name: storefront_catalog_service
     hostname: storefrontCatalogService
+    labels:
+      logging: vector
     ports:
       - "8000:8000"
     build:
@@ -275,6 +277,8 @@ services:
 
   celery_worker:
     container_name: celery_worker
+    labels:
+      logging: vector
     build:
       dockerfile: Dockerfile
       context: ./storefront_catalog_service
@@ -294,6 +298,8 @@ services:
 
   celery_beat:
     container_name: celery_beat
+    labels:
+      logging: vector
     build:
       dockerfile: Dockerfile
       context: ./storefront_catalog_service
@@ -382,6 +388,8 @@ services:
   notification_service:
     container_name: notification_service
     hostname: notificationService
+    labels:
+      logging: vector
     build:
       dockerfile: Dockerfile
       context: ./notification_service
@@ -395,7 +403,7 @@ services:
     command: ["uvicorn", "main:asgi_app", "--host", "0.0.0.0", "--port", "11111", "--reload"]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:11111/health"]
-      interval: 10s
+      interval: 60s
       timeout: 5s
       retries: 3
       start_period: 10s

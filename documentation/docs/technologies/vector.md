@@ -57,9 +57,51 @@ Vector reads every log line written to stdout by any Docker container, applies a
 ```toml
 [sources.docker_logs]
 type = "docker_logs"
+include_labels = ["logging=vector"]
 ```
 
 Vector connects to `/var/run/docker.sock` and subscribes to the Docker log stream. This is equivalent to `docker logs -f <container>` for all containers simultaneously, but with structured metadata (container name, image, stream type).
+
+**Container selection via labels.** Without a filter, Vector would tail every container on the host — Kafka brokers, Postgres, RabbitMQ, UIs, ClickHouse itself, even Vector — and the VRL transform would discard most of it after parsing. That wastes CPU and creates a self-logging cycle (Vector → ClickHouse → ClickHouse logs → Vector). The `include_labels` filter pushes the decision down to the Docker API: only containers carrying the `logging=vector` label are subscribed to in the first place.
+
+In `docker-compose.yml`, the four application services opt in:
+
+```yaml
+storefront_catalog_service:
+  labels:
+    logging: vector
+celery_worker:
+  labels:
+    logging: vector
+celery_beat:
+  labels:
+    logging: vector
+notification_service:
+  labels:
+    logging: vector
+```
+
+New services join the pipeline by adding the same label — no changes to `vector.toml` required. This is the same convention used by Fluent Bit's `kubernetes.io/log` annotation and by Loki's Promtail label discovery.
+
+### Structured logging in the application: `python-json-logger`
+
+The filter on the source side only works because every application service produces JSON on stdout in a consistent shape. That shape comes from the [`python-json-logger`](https://pypi.org/project/python-json-logger/) package, wired into each service's `logging` configuration as the formatter:
+
+```python
+# pseudo-code from each service's logging setup
+from pythonjsonlogger.json import JsonFormatter
+
+formatter = JsonFormatter(
+    "%(asctime)s %(name)s %(levelname)s %(message)s",
+    rename_fields={"levelname": "level", "name": "logger"},
+)
+```
+
+Key reasons for this choice:
+
+- **`asctime` is the marker field.** The VRL transform uses `if !exists(parsed.asctime) { abort }` as a sanity check that a JSON line actually came from our logger and not from some library that happens to print `{...}` (FastAPI startup, rdkafka diagnostics, etc.).
+- **Stable schema.** The formatter is configured to always emit the same top-level keys (`environment`, `service`, `host`, `level`, `log_type`, `trace_id`, ...), which lets Vector's transform rebuild the event with `. = {...}` and pass it to ClickHouse without `400 Bad Request` from unknown columns.
+- **Single dependency.** `python-json-logger` is a ~200-line library with no transitive dependencies. It is the de-facto standard for JSON logging in Python and is what Datadog, Sentry, and most observability vendors document for their Python SDKs.
 
 ### Transform: `remap` (VRL)
 
@@ -103,6 +145,23 @@ The transform uses **VRL (Vector Remap Language)** — a purpose-built expressio
 - **`abort` without `asctime`** — only records from `python-json-logger` carry this field; it acts as a filter for our structured logs.
 - **Explicit object reconstruction** — `". = {...}"` replaces the entire event with only the 15 fields in the ClickHouse schema. Without this, Vector includes Docker metadata (`container_id`, `stream`, `source_type`) which causes ClickHouse to return `400 Bad Request`.
 - **Comma → dot in asctime** — Python's `logging.Formatter` outputs `"2026-05-01 15:26:35,852"` (locale-style comma separator before milliseconds). VRL's `parse_timestamp` requires a dot: `"2026-05-01 15:26:35.852"`.
+
+### Sink: `console_debug` (optional, debug-only)
+
+```toml
+[sinks.console_debug]
+type = "console"
+inputs = ["parse_json"]
+encoding.codec = "json"
+```
+
+A second sink that prints every transformed event to Vector's own stdout, visible via `docker logs vector`. Its purpose is purely diagnostic: when iterating on the VRL transform or the ClickHouse schema, it lets you see the **exact JSON payload** that would be sent to ClickHouse before the HTTP request happens. The ClickHouse sink doesn't echo failed payloads in its error messages — a `400 Bad Request` on an unknown field tells you the column name but not the row — so without `console_debug` you'd be reverse-engineering the transform from error logs.
+
+The sink reads from the same `parse_json` transform as the ClickHouse sink, so what you see in `docker logs vector` is byte-for-byte what ClickHouse receives.
+
+**Why it doesn't cause a feedback loop.** A naive concern: Vector writes to its own stdout, Docker captures stdout, Vector reads Docker logs — isn't that an infinite cycle? It would be, except `include_labels = ["logging=vector"]` on the source filters out the `vector` container itself (which has no such label). The debug output stays in `docker logs vector` and never re-enters the pipeline.
+
+**When to remove it.** Once the pipeline is stable and you're confident in the schema, comment out or delete this sink. It adds a small amount of CPU overhead (every event is JSON-encoded twice — once for ClickHouse, once for stdout) and clutters `docker logs vector` with operational events that you'd otherwise query directly from ClickHouse.
 
 ### Sink: `clickhouse`
 

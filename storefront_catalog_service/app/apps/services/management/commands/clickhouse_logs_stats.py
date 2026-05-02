@@ -22,8 +22,6 @@ Usage:
 """
 
 import json
-import os
-import socket
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -31,6 +29,7 @@ from argparse import ArgumentParser
 from datetime import UTC, datetime
 from typing import Any
 
+from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
 from rich.console import Console
@@ -118,14 +117,14 @@ class Command(BaseCommand):
     def add_arguments(self, parser: ArgumentParser) -> None:
         parser.add_argument(
             "--host",
-            default=os.getenv("CLICKHOUSE_HOST", "localhost"),
-            help="ClickHouse host (default: $CLICKHOUSE_HOST or 'localhost')",
+            default=settings.CLICKHOUSE_HOST,
+            help="ClickHouse host (default: settings.CLICKHOUSE_HOST)",
         )
         parser.add_argument(
             "--port",
             type=int,
-            default=int(os.getenv("CLICKHOUSE_PORT", "8123")),
-            help="ClickHouse HTTP port (default: $CLICKHOUSE_PORT or 8123)",
+            default=settings.CLICKHOUSE_PORT,
+            help="ClickHouse HTTP port (default: settings.CLICKHOUSE_PORT)",
         )
         parser.add_argument(
             "--hours",
@@ -142,13 +141,13 @@ class Command(BaseCommand):
         )
         parser.add_argument(
             "--password",
-            default=os.getenv("CLICKHOUSE_PASSWORD", ""),
-            help="ClickHouse password (default: $CLICKHOUSE_PASSWORD)",
+            default=settings.CLICKHOUSE_PASSWORD,
+            help="ClickHouse password (default: settings.CLICKHOUSE_PASSWORD)",
         )
         parser.add_argument(
             "--user",
-            default=os.getenv("CLICKHOUSE_USER", "default"),
-            help="ClickHouse user (default: $CLICKHOUSE_USER or 'default')",
+            default=settings.CLICKHOUSE_USER,
+            help="ClickHouse user (default: settings.CLICKHOUSE_USER)",
         )
 
         parser.add_argument(
@@ -432,9 +431,9 @@ class Command(BaseCommand):
         now = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
         record = {
             "timestamp": now,
-            "environment": os.getenv("ENVIRONMENT", "production"),
-            "service": "storefront-catalog-service",
-            "host": socket.gethostname(),
+            "environment": settings.ENVIRONMENT,
+            "service": settings.SERVICE_NAME,
+            "host": settings.HOST,
             "level": "INFO",
             "log_type": "audit",
             "logger": "apps.services.management.commands.clickhouse_logs_stats",

@@ -413,28 +413,17 @@ Request a one-time password for passwordless authentication.
         # Identify channel without logging the actual value
         channel = "email" if request.data.get("email") else "phone"
 
-        logger.error(
+        logger.info(
             "otp_request received new",
             extra={
                 "log_type": "audit",
                 "extra": json.dumps({"channel": channel}),
             },
         )
-        try:
-            serializer = self.get_serializer(data=request.data)
-            serializer.is_valid(raise_exception=True)
-            result = serializer.save()
-        except Exception:
-            # logger.exception automatically captures exc_info →
-            # ClickHouseFieldsFilter serialises it into the `exception` column
-            logger.exception(
-                "otp_request failed",
-                extra={
-                    "log_type": "error",
-                    "extra": json.dumps({"channel": channel}),
-                },
-            )
-            raise
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        result = serializer.save()
 
         task = simple_task_with_defined_time.apply_async(
             args=("some data",),

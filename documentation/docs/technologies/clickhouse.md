@@ -67,23 +67,41 @@ CREATE TABLE IF NOT EXISTS default.logs
     user_id       Nullable(Int64),
     request_id    String                  DEFAULT ''    CODEC(ZSTD(1)),
 
+    http_method   LowCardinality(String)  DEFAULT ''    CODEC(ZSTD(1)),
+    http_path     String                  DEFAULT ''    CODEC(ZSTD(1)),
+    http_status   UInt16                  DEFAULT 0,
+
+    task_id       String                  DEFAULT ''    CODEC(ZSTD(1)),
+
+    duration_ms   UInt32                  DEFAULT 0,
+
     message       String                  DEFAULT ''    CODEC(ZSTD(1)),
     exception     String                  DEFAULT ''    CODEC(ZSTD(1)),
-    extra         String                  DEFAULT ''    CODEC(ZSTD(1))
+    extra         String                  DEFAULT ''    CODEC(ZSTD(1)),
+
+    INDEX idx_trace_id    trace_id    TYPE bloom_filter(0.01)        GRANULARITY 4,
+    INDEX idx_request_id  request_id  TYPE bloom_filter(0.01)        GRANULARITY 4,
+    INDEX idx_task_id     task_id     TYPE bloom_filter(0.01)        GRANULARITY 4,
+    INDEX idx_user_id     user_id     TYPE bloom_filter(0.01)        GRANULARITY 4,
+    INDEX idx_http_status http_status TYPE set(20)                   GRANULARITY 4,
+    INDEX idx_message     message     TYPE tokenbf_v1(32768, 3, 0)   GRANULARITY 4,
+    INDEX idx_http_path   http_path   TYPE tokenbf_v1(8192, 3, 0)    GRANULARITY 4
 )
 ENGINE = MergeTree
-PARTITION BY toYYYYMMDD(timestamp)
+PARTITION BY (toYYYYMMDD(timestamp), log_type)
 ORDER BY (service, level, toStartOfMinute(timestamp), trace_id)
 TTL
     toDateTime(timestamp) + INTERVAL 14 DAY DELETE WHERE log_type = 'app',
     toDateTime(timestamp) + INTERVAL 30 DAY DELETE WHERE log_type = 'error',
     toDateTime(timestamp) + INTERVAL 60 DAY DELETE WHERE log_type = 'audit'
-SETTINGS index_granularity = 8192;
+SETTINGS
+    index_granularity = 8192,
+    ttl_only_drop_parts = 1;
 ```
 
 ### Design Decisions
 
-**`LowCardinality(String)`** — For fields with few unique values (`level`, `service`, `environment`, `log_type`), ClickHouse stores a dictionary internally. This reduces storage by 3–5x and speeds up `GROUP BY` and `WHERE` filters on these columns significantly.
+**`LowCardinality(String)`** — For fields with few unique values (`level`, `service`, `environment`, `log_type`, `host`, `logger`, `http_method`), ClickHouse stores a dictionary internally. This reduces storage by 3–5x and speeds up `GROUP BY` and `WHERE` filters on these columns significantly.
 
 **`CODEC(Delta(8), ZSTD(1))` on `timestamp`** — The Delta codec stores differences between consecutive values rather than absolute values. Since timestamps are monotonically increasing, differences are small integers, and ZSTD compresses them extremely well. Achieves ~6x compression.
 
@@ -91,9 +109,19 @@ SETTINGS index_granularity = 8192;
 
 **`DateTime64(3)`** — Millisecond precision. Python's `logging` module provides millisecond timestamps via `%(asctime)s`, so sub-second accuracy is preserved.
 
-**`PARTITION BY toYYYYMMDD(timestamp)`** — Daily partitions align with the TTL rules. ClickHouse drops entire partitions rather than scanning rows, making TTL expiry nearly free.
+**`PARTITION BY (toYYYYMMDD(timestamp), log_type)`** — Composite partition key: one part per day per log_type bucket. The day component aligns with daily TTL boundaries; the `log_type` component makes parts homogeneous so each part holds rows from a single retention tier (`app`, `error`, or `audit`). That homogeneity is what unlocks the cheap whole-part TTL drops below.
 
 **`ORDER BY (service, level, toStartOfMinute(timestamp), trace_id)`** — The primary key determines the sort order on disk. Queries filtered by `service` and `level` skip irrelevant data blocks entirely. `toStartOfMinute` groups similar timestamps to improve compression of adjacent rows.
+
+**Skip indexes** — Secondary data-skipping indexes complement the primary key by accelerating queries that don't filter on the leading `ORDER BY` columns. One skip-index granule covers `GRANULARITY × index_granularity` rows (here 4 × 8192 = 32 768), and ClickHouse uses them to discard entire ranges before reading data.
+
+| Index | Type | Purpose |
+|---|---|---|
+| `idx_trace_id`, `idx_request_id`, `idx_task_id`, `idx_user_id` | `bloom_filter(0.01)` | Point lookups (`WHERE trace_id = '…'`) without needing the leading `service`/`level` columns. 1% false-positive rate. |
+| `idx_http_status` | `set(20)` | Small enumerable value set (200, 301, 404, 500…). Cheaper and exact compared to bloom. |
+| `idx_message`, `idx_http_path` | `tokenbf_v1` | Token / substring search (`WHERE message LIKE '%timeout%'`). Splits text on non-alphanumeric chars and stores token bloom filters. |
+
+**Whole-part TTL drops (`ttl_only_drop_parts = 1`)** — With one `log_type` per part, the conditional TTL above (`DELETE WHERE log_type = 'app'`) is satisfied either by every row in a part or by none of them. ClickHouse can therefore drop the entire part in one filesystem operation when its rows expire, instead of running a row-level merge that rewrites the part minus the deleted rows. On high-volume tables this turns TTL maintenance from an ongoing CPU/I-O cost into a near-free directory unlink.
 
 **TTL per `log_type`** — Three retention tiers:
 - `app` — 14 days (routine operational logs)
@@ -166,6 +194,8 @@ ORDER BY n DESC
 LIMIT 10;
 
 -- Trace reconstruction: all events for a given trace
+-- Note: `idx_trace_id` (bloom_filter) makes this fast even without
+-- knowing the service/level/timestamp window upfront.
 SELECT timestamp, service, level, message, extra
 FROM default.logs
 WHERE trace_id = 'your-trace-id-here'

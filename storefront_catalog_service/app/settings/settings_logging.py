@@ -1,10 +1,28 @@
 from __future__ import annotations
 
 import logging
-import os
 import socket
 import traceback
 from typing import Any
+
+from decouple import config
+
+# ============================================================================
+# Service identification
+# ============================================================================
+
+SERVICE_NAME: str = config("SERVICE_NAME", default="storefront-catalog-service")
+ENVIRONMENT: str = config("ENVIRONMENT", default="production")
+HOST: str = socket.gethostname()
+
+# ============================================================================
+# ClickHouse — log storage (read by management commands and the Vector pipeline)
+# ============================================================================
+
+CLICKHOUSE_HOST: str = config("CLICKHOUSE_HOST", default="localhost")
+CLICKHOUSE_PORT: int = config("CLICKHOUSE_PORT", default=8123, cast=int)
+CLICKHOUSE_USER: str = config("CLICKHOUSE_USER", default="default")
+CLICKHOUSE_PASSWORD: str = config("CLICKHOUSE_PASSWORD", default="")
 
 # ============================================================================
 # Logging — structured JSON for ClickHouse via Vector
@@ -17,10 +35,6 @@ from typing import Any
 # The ClickHouseFieldsFilter guarantees these fields exist on every record
 # (with sensible defaults) so Vector never fails on a missing column.
 # ============================================================================
-
-_SERVICE_NAME = os.getenv("SERVICE_NAME", "storefront-catalog-service")
-_ENVIRONMENT = os.getenv("ENVIRONMENT", "production")
-_HOST = socket.gethostname()
 
 
 class ClickHouseFieldsFilter(logging.Filter):
@@ -42,9 +56,9 @@ class ClickHouseFieldsFilter(logging.Filter):
         "user_id": None,
         "request_id": "",
         "log_type": "app",
-        "service": _SERVICE_NAME,
-        "environment": _ENVIRONMENT,
-        "host": _HOST,
+        "service": SERVICE_NAME,
+        "environment": ENVIRONMENT,
+        "host": HOST,
         "exception": "",
         "extra": "",
     }

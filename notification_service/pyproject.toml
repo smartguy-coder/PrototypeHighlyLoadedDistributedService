@@ -14,6 +14,8 @@ dependencies = [
     "zstandard>=0.22.0",
     # ASGI server for serving AsyncAPI docs
     "uvicorn>=0.30.0",
+    # Structured JSON logs for the Vector → ClickHouse pipeline
+    "python-json-logger>=4.1.0",
 ]
 
 [project.optional-dependencies]

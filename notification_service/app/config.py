@@ -1,5 +1,7 @@
+import socket
 from functools import lru_cache
 
+from pydantic import Field
 from pydantic_settings import BaseSettings
 
 
@@ -8,6 +10,8 @@ class Settings(BaseSettings):
 
     # Service identification
     SERVICE_NAME: str = "notification-service"
+    ENVIRONMENT: str = "production"
+    HOST: str = Field(default_factory=socket.gethostname)
     LOG_LEVEL: str = "INFO"
 
     # Kafka connection (comma-separated string from env)

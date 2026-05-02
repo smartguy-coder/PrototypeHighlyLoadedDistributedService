@@ -415,7 +415,7 @@ services:
     restart: unless-stopped
     ports:
       - "8123:8123"   # HTTP interface
-      # - "9000:9000"   # I cannot set, everything works via 8123
+      # - "9000:9000"   # TLC - I cannot set, everything works via 8123
     environment:
       CLICKHOUSE_USER: ${CLICKHOUSE_USER}
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
@@ -423,7 +423,7 @@ services:
     env_file:
       - .env
     volumes:
-      - clickhouse_data:/var/lib/clickhouse
+      - ./data/clickhouse:/var/lib/clickhouse
       - ./clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     ulimits:
       nofile:
@@ -473,4 +473,3 @@ volumes:
     driver: local
   frontend_node_modules:
     driver: local
-  clickhouse_data:

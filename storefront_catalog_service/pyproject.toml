@@ -1,6 +1,6 @@
 [project]
 name = "storefront-catalog-service"
-version = "0.8.0"
+version = "0.9.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -23,6 +23,7 @@ dependencies = [
     "rabbitmq>=0.2.0",
     "sentry-sdk[django]>=2.52.0",
     "rich>=14.3.3",
+    "python-json-logger>=4.1.0",
 ]
 
 [project.optional-dependencies]
@@ -93,6 +94,9 @@ exclude_dirs = [".venv", "tests", "migrations"]
 skips = [
     "B101",  # assert_used - OK in tests
     "B311",  # random - OK for non-crypto purposes
+    "B608",  # hardcoded_sql_expressions - false positive: all dynamic values
+             # ({hours}, {limit}) are typed as int by argparse + mypy strict,
+             # making string injection structurally impossible
 ]
 
 # =============================================================================
@@ -158,6 +162,9 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "**/tests/**/*.py" = ["S101", "S105", "S106"]  # Allow asserts and hardcoded passwords in tests
 "**/migrations/*.py" = ["E501", "RUF012"]       # Ignore in migrations
+# S608: all interpolated values ({hours}, {limit}) are int-typed via argparse
+# + mypy strict — SQL injection is structurally impossible here
+"**/management/commands/clickhouse_logs_stats.py" = ["S608"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["app", "apps", "core", "orm", "settings"]

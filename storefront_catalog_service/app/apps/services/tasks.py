@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 from datetime import UTC, datetime
 
@@ -9,29 +10,68 @@ from utils.celery import CeleryQueueEnum
 logger = logging.getLogger(__name__)
 
 
+# ============================================================================
+# Simple tasks
+# ============================================================================
+
+
 @shared_task(queue=CeleryQueueEnum.DEFAULT, bind=True)
 def simple_task(self: Task[..., None]) -> None:
-    logger.info("[simple_task] started | task_id=%s retries=%s", self.request.id, self.request.retries)
-    logger.info("[simple_task] finished successfully | task_id=%s", self.request.id)
+    task_id = self.request.id or ""
+
+    logger.info(
+        "simple_task started",
+        extra={
+            "log_type": "app",
+            "request_id": task_id,
+            "extra": json.dumps({"retries": self.request.retries}),
+        },
+    )
+    logger.info(
+        "simple_task finished",
+        extra={
+            "log_type": "app",
+            "request_id": task_id,
+        },
+    )
 
 
 @shared_task(queue=CeleryQueueEnum.EMAILS)
 def send_email() -> None:
-    logger.info("[send_email] started")
+    logger.info(
+        "send_email started",
+        extra={"log_type": "app"},
+    )
 
 
 @shared_task(queue=CeleryQueueEnum.HEAVY)
 def heavy_task() -> None:
-    logger.info("[heavy_task] started — will crash")
+    logger.info(
+        "heavy_task started",
+        extra={"log_type": "app"},
+    )
 
 
 @shared_task(queue=CeleryQueueEnum.DEFAULT, bind=True, name="services.periodic_test_task")
 def periodic_test_task(self: Task[..., None]) -> None:
+    task_id = self.request.id or ""
     now = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
+
     logger.info(
-        "[periodic_test_task] ✔ tick | task_id=%s time=%s retries=%s", self.request.id, now, self.request.retries
+        "periodic_test_task tick",
+        extra={
+            "log_type": "app",
+            "request_id": task_id,
+            "extra": json.dumps({"time": now, "retries": self.request.retries}),
+        },
     )
-    logger.info("[periodic_test_task] done | task_id=%s", self.request.id)
+    logger.info(
+        "periodic_test_task done",
+        extra={
+            "log_type": "app",
+            "request_id": task_id,
+        },
+    )
 
 
 # ============================================================================
@@ -48,7 +88,13 @@ def add(x: int, y: int) -> int:
     when connected via `.s()` (immutable=False) signatures.
     """
     result = x + y
-    logger.info("[add] %s + %s = %s", x, y, result)
+    logger.info(
+        "add completed",
+        extra={
+            "log_type": "app",
+            "extra": json.dumps({"x": x, "y": y, "result": result}),
+        },
+    )
     return result
 
 
@@ -60,7 +106,13 @@ def multiply(x: int, y: int) -> int:
     result as the first positional arg in a chain.
     """
     result = x * y
-    logger.info("[multiply] %s * %s = %s", x, y, result)
+    logger.info(
+        "multiply completed",
+        extra={
+            "log_type": "app",
+            "extra": json.dumps({"x": x, "y": y, "result": result}),
+        },
+    )
     return result
 
 
@@ -72,7 +124,13 @@ def aggregate(results: list[int]) -> int:
     receives a list of return values from all header tasks.
     """
     total = sum(results)
-    logger.info("[aggregate] sum(%s) = %s", results, total)
+    logger.info(
+        "aggregate completed",
+        extra={
+            "log_type": "app",
+            "extra": json.dumps({"inputs": results, "total": total}),
+        },
+    )
     return total
 
 
@@ -95,12 +153,19 @@ def demo_chain_with_s(self: Task[..., None]) -> None:
       3. add(50, 100)       → 150  (50 is injected as first arg)
     """
     pipeline = chain(
-        add.s(2, 3),  # -> 5
-        multiply.s(10),  # prev=5  -> 5 * 10 = 50
-        add.s(100),  # prev=50 -> 50 + 100 = 150
+        add.s(2, 3),
+        multiply.s(10),
+        add.s(100),
     )
     result = pipeline.apply_async()
-    logger.info("[demo_chain_with_s] dispatched chain | root_id=%s", result.id)
+    logger.info(
+        "demo_chain_with_s dispatched",
+        extra={
+            "log_type": "app",
+            "request_id": self.request.id or "",
+            "extra": json.dumps({"root_id": result.id}),
+        },
+    )
 
 
 @shared_task(queue=CeleryQueueEnum.DEFAULT, bind=True)
@@ -118,12 +183,19 @@ def demo_chain_with_si(self: Task[..., None]) -> None:
     independent* (e.g., step-by-step migrations, ordered side-effects).
     """
     pipeline = chain(
-        add.si(2, 3),  # -> 5   (result discarded by next step)
-        multiply.si(4, 5),  # -> 20  (does NOT receive 5)
-        add.si(10, 20),  # -> 30  (does NOT receive 20)
+        add.si(2, 3),
+        multiply.si(4, 5),
+        add.si(10, 20),
     )
     result = pipeline.apply_async()
-    logger.info("[demo_chain_with_si] dispatched chain | root_id=%s", result.id)
+    logger.info(
+        "demo_chain_with_si dispatched",
+        extra={
+            "log_type": "app",
+            "request_id": self.request.id or "",
+            "extra": json.dumps({"root_id": result.id}),
+        },
+    )
 
 
 # ============================================================================
@@ -146,11 +218,18 @@ def demo_chord_with_s(self: Task[..., None]) -> None:
       aggregate([3, 7, 11]) → 21
     """
     task_group = chord(
-        [add.s(1, 2), add.s(3, 4), add.s(5, 6)],  # header — parallel
-        aggregate.s(),  # callback — receives [3, 7, 11]
+        [add.s(1, 2), add.s(3, 4), add.s(5, 6)],
+        aggregate.s(),
     )
     result = task_group.apply_async()
-    logger.info("[demo_chord_with_s] dispatched chord | root_id=%s", result.id)
+    logger.info(
+        "demo_chord_with_s dispatched",
+        extra={
+            "log_type": "app",
+            "request_id": self.request.id or "",
+            "extra": json.dumps({"root_id": result.id}),
+        },
+    )
 
 
 @shared_task(queue=CeleryQueueEnum.DEFAULT, bind=True)
@@ -169,8 +248,15 @@ def demo_chord_with_si(self: Task[..., None]) -> None:
     multiply(10, 20) → 200  (header results are discarded)
     """
     task_group = chord(
-        [add.s(1, 2), add.s(3, 4), add.s(5, 6)],  # header — parallel
-        multiply.si(10, 20),  # callback — ignores header results
+        [add.s(1, 2), add.s(3, 4), add.s(5, 6)],
+        multiply.si(10, 20),
     )
     result = task_group.apply_async()
-    logger.info("[demo_chord_with_si] dispatched chord | root_id=%s", result.id)
+    logger.info(
+        "demo_chord_with_si dispatched",
+        extra={
+            "log_type": "app",
+            "request_id": self.request.id or "",
+            "extra": json.dumps({"root_id": result.id}),
+        },
+    )

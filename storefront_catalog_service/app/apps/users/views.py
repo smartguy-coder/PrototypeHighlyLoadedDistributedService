@@ -1,3 +1,5 @@
+import json
+import logging
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -18,6 +20,8 @@ from apps.users.serializers import (
 )
 
 from .tasks import simple_task_with_defined_time
+
+logger = logging.getLogger(__name__)
 
 
 class EmailOrPhoneTokenObtainPairView(TokenObtainPairView):
@@ -406,11 +410,49 @@ Request a one-time password for passwordless authentication.
         tags=["OTP Authentication"],
     )
     def post(self, request: Request, *args: Any, **kwargs: Any) -> Response:
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        result = serializer.save()
+        # Identify channel without logging the actual value
+        channel = "email" if request.data.get("email") else "phone"
 
-        simple_task_with_defined_time.apply_async(args=("some data",), eta=datetime.now(UTC) + timedelta(minutes=1))
+        logger.error(
+            "otp_request received new",
+            extra={
+                "log_type": "audit",
+                "extra": json.dumps({"channel": channel}),
+            },
+        )
+        try:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            result = serializer.save()
+        except Exception:
+            # logger.exception automatically captures exc_info →
+            # ClickHouseFieldsFilter serialises it into the `exception` column
+            logger.exception(
+                "otp_request failed",
+                extra={
+                    "log_type": "error",
+                    "extra": json.dumps({"channel": channel}),
+                },
+            )
+            raise
+
+        task = simple_task_with_defined_time.apply_async(
+            args=("some data",),
+            eta=datetime.now(UTC) + timedelta(minutes=1),
+        )
+
+        logger.info(
+            "otp_request succeeded",
+            extra={
+                "log_type": "audit",
+                "extra": json.dumps(
+                    {
+                        "channel": channel,
+                        "task_id": task.id,
+                    }
+                ),
+            },
+        )
 
         return Response(result, status=status.HTTP_200_OK)
 

@@ -18,6 +18,10 @@ nav:
     - PgBouncer: technologies/pgbouncer.md
     - PyPI Publishing: technologies/pypi-publishing.md
     - FastStream: technologies/faststream.md
+    - Logging Stack:
+      - ClickHouse: technologies/clickhouse.md
+      - Vector: technologies/vector.md
+      - Grafana: technologies/grafana.md
   - Changelog:
     - Overview: changelog/index.md
     - Storefront Frontend: changelog/storefront-frontend.md

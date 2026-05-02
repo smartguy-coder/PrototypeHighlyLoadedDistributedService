@@ -1,0 +1,68 @@
+[sources.docker_logs]
+type = "docker_logs"
+
+[transforms.parse_json]
+type = "remap"
+inputs = ["docker_logs"]
+source = '''
+# Drop non-JSON lines silently
+parsed, err = parse_json(.message)
+if err != null || !is_object(parsed) {
+    abort
+}
+
+# Drop anything without asctime — not from our structured logger
+if !exists(parsed.asctime) {
+    abort
+}
+
+# Python asctime: "2026-05-01 15:26:35,852" — comma before ms → replace with dot
+asctime_fixed = replace(string!(parsed.asctime), ",", ".")
+ts, err = parse_timestamp(asctime_fixed, "%Y-%m-%d %H:%M:%S%.3f")
+if err != null {
+    ts, err = parse_timestamp(asctime_fixed, "%Y-%m-%d %H:%M:%S")
+    if err != null {
+        abort
+    }
+}
+
+# Format timestamp as ClickHouse DateTime64(3) string: "YYYY-MM-DD HH:MM:SS.mmm"
+timestamp_str = format_timestamp!(ts, "%Y-%m-%d %H:%M:%S%.3f")
+
+# Rebuild event with ONLY schema fields
+. = {
+    "timestamp":   timestamp_str,
+    "environment": string(parsed.environment) ?? "production",
+    "service":     string(parsed.service)     ?? "unknown",
+    "host":        string(parsed.host)        ?? "unknown",
+    "level":       string(parsed.level)       ?? "INFO",
+    "log_type":    string(parsed.log_type)    ?? "app",
+    "logger":      string(parsed.logger)      ?? "",
+    "trace_id":    string(parsed.trace_id)    ?? "",
+    "span_id":     string(parsed.span_id)     ?? "",
+    "user_id":     parsed.user_id,
+    "request_id":  string(parsed.request_id)  ?? "",
+    "message":     string(parsed.message)     ?? "",
+    "exception":   string(parsed.exception)   ?? "",
+    "extra":       string(parsed.extra)       ?? ""
+}
+'''
+
+# Temporary: print to stdout so we can inspect the exact payload
+[sinks.console_debug]
+type = "console"
+inputs = ["parse_json"]
+encoding.codec = "json"
+
+[sinks.clickhouse]
+type = "clickhouse"
+inputs = ["parse_json"]
+endpoint = "http://clickhouse:8123"
+database = "default"
+table = "logs"
+skip_unknown_fields = true
+
+[sinks.clickhouse.auth]
+strategy = "basic"
+user = "${CLICKHOUSE_USER}"
+password = "${CLICKHOUSE_PASSWORD}"

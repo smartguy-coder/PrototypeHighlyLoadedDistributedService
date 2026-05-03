@@ -471,6 +471,9 @@ services:
         condition: service_healthy
     environment:
       GF_INSTALL_PLUGINS: grafana-clickhouse-datasource
+    profiles:
+      - ui
+      - monitoring
 
 volumes:
   kafka-1-data:

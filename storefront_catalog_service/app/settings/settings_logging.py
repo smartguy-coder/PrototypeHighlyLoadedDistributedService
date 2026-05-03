@@ -14,8 +14,6 @@ See:
     - prototype_highly_loaded_distributed_service_utils.logging
 """
 
-from __future__ import annotations
-
 import socket
 from typing import Any
 

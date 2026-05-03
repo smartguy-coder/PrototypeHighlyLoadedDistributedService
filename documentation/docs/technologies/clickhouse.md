@@ -99,6 +99,37 @@ SETTINGS
     ttl_only_drop_parts = 1;
 ```
 
+### How services produce records that fit this schema
+
+Every field above corresponds to a key emitted by the JSON formatter on the
+application side. Rather than duplicating the formatter, filter, and field
+defaults across every service, that wiring lives in the shared utility
+package [`prototype-highly-loaded-distributed-service-utils`](../technologies/pypi-publishing.md):
+
+- `ClickHouseFieldsFilter` — a `logging.Filter` that injects defaults for
+  every column on every `LogRecord`, renames `levelname` → `level` and
+  `name` → `logger` to match column names, and serialises `exc_info` into
+  the `exception` column. Because it runs as a handler-level filter, the
+  schema invariant holds for any logger in the process — framework code,
+  third-party libraries, and ad-hoc `logging.getLogger("x")` calls all
+  produce records that map 1:1 onto the table above.
+- `build_logging_config(service_name, environment, host, log_level, extra_loggers)` —
+  a factory that returns a `logging.config.dictConfig`-compatible dict.
+  Each service supplies its own identity and a small set of per-logger
+  overrides (`django` / `celery` for `storefront_catalog_service`,
+  `faststream` / `uvicorn` for `notification_service`); everything else
+  — formatter, filter, console handler, JSON format string — is identical
+  by construction.
+
+This means the schema in this file and the application side cannot drift:
+adding a new column requires changes in exactly two places (the `CREATE
+TABLE` above and the format string in the utility), not one per service.
+It also means a new service joins the pipeline by importing
+`build_logging_config(...)` and adding the `logging=vector` Docker label
+— nothing more.
+
+---
+
 ### Design Decisions
 
 **`LowCardinality(String)`** — For fields with few unique values (`level`, `service`, `environment`, `log_type`, `host`, `logger`, `http_method`), ClickHouse stores a dictionary internally. This reduces storage by 3–5x and speeds up `GROUP BY` and `WHERE` filters on these columns significantly.

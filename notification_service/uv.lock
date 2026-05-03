@@ -402,7 +402,6 @@ dependencies = [
     { name = "lz4" },
     { name = "prototype-highly-loaded-distributed-service-utils" },
     { name = "pydantic-settings" },
-    { name = "python-json-logger" },
     { name = "python-snappy" },
     { name = "uvicorn" },
     { name = "zstandard" },
@@ -421,11 +420,10 @@ requires-dist = [
     { name = "faststream", extras = ["kafka", "cli"], specifier = ">=0.6.7" },
     { name = "lz4", specifier = ">=4.0.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.10.0" },
-    { name = "prototype-highly-loaded-distributed-service-utils", specifier = "==0.1.5" },
+    { name = "prototype-highly-loaded-distributed-service-utils", specifier = "==0.2.0" },
     { name = "pydantic-settings", specifier = ">=2.0.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.24.0" },
-    { name = "python-json-logger", specifier = ">=4.1.0" },
     { name = "python-snappy", specifier = ">=0.7.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.4.0" },
     { name = "uvicorn", specifier = ">=0.30.0" },
@@ -461,13 +459,14 @@ wheels = [
 
 [[package]]
 name = "prototype-highly-loaded-distributed-service-utils"
-version = "0.1.5"
+version = "0.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pydantic" },
+    { name = "python-json-logger" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8e/dc/2a7b0f6600b9215b972c64f6bae5c3af7732f905afe24b241eb485120b26/prototype_highly_loaded_distributed_service_utils-0.1.5-py3-none-any.whl", hash = "sha256:792dc5c7eff4e9f57780bc78492363718111c3488218bbb8ce1f6f7d51e71b12", size = 10654 },
+    { url = "https://files.pythonhosted.org/packages/5d/c1/c38d16836c05ae60f94cd6b90d9089cd9f8019d847c13c3acefcf82d53f7/prototype_highly_loaded_distributed_service_utils-0.2.0-py3-none-any.whl", hash = "sha256:2812fff09650b3bb74d4bd91b3bcd06933458c59e1f69848429951a176baee56", size = 15617 },
 ]
 
 [[package]]

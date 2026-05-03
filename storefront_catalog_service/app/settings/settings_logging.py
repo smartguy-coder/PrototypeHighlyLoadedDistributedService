@@ -1,14 +1,31 @@
+"""
+Logging configuration for storefront-catalog-service.
+
+The Vector pipeline (vector.toml) ingests stdout from this container
+into ClickHouse. The shape of every log record must match the
+ClickHouse ``logs`` table schema. That contract is implemented in
+the shared utility package — this file is just the thin Django-side
+wiring that supplies per-service identity and Django-specific logger
+overrides.
+
+See:
+    - documentation/docs/technologies/clickhouse.md  (table schema)
+    - documentation/docs/technologies/vector.md      (transform & pipeline)
+    - prototype_highly_loaded_distributed_service_utils.logging
+"""
+
 from __future__ import annotations
 
-import logging
 import socket
-import traceback
 from typing import Any
 
 from decouple import config
+from prototype_highly_loaded_distributed_service_utils.logging import (
+    build_logging_config,
+)
 
 # ============================================================================
-# Service identification
+# Service identification — also imported by management commands & filters
 # ============================================================================
 
 SERVICE_NAME: str = config("SERVICE_NAME", default="storefront-catalog-service")
@@ -16,7 +33,8 @@ ENVIRONMENT: str = config("ENVIRONMENT", default="production")
 HOST: str = socket.gethostname()
 
 # ============================================================================
-# ClickHouse — log storage (read by management commands and the Vector pipeline)
+# ClickHouse — log storage (read by management commands; Vector reads its
+# own credentials from environment variables in vector.toml)
 # ============================================================================
 
 CLICKHOUSE_HOST: str = config("CLICKHOUSE_HOST", default="localhost")
@@ -27,119 +45,35 @@ CLICKHOUSE_PASSWORD: str = config("CLICKHOUSE_PASSWORD", default="")
 # ============================================================================
 # Logging — structured JSON for ClickHouse via Vector
 # ============================================================================
-# Every log record must carry ALL fields that match the ClickHouse schema:
+# The shared utility builds the bulk of LOGGING; we only specify Django- and
+# Celery-specific logger overrides here. Notes on the choices below:
 #
-#   timestamp, environment, service, host, level, log_type, logger,
-#   trace_id, span_id, user_id, request_id, message, exception, extra
+# - ``apps``  — INFO is loud enough to trace business actions but quiet
+#   enough not to drown the table. The ``apps`` prefix matches the
+#   layout enforced by import-linter (see pyproject.toml).
+# - ``django`` — WARNING because INFO produces one line per request.
+# - ``django.request`` — ERROR; Django emits 4xx as WARNING and 5xx as
+#   ERROR, and 4xx noise (404 from scanners etc.) isn't worth keeping.
+# - ``celery`` and ``celery.task`` — INFO captures task lifecycle events
+#   that are essential for debugging the queue.
 #
-# The ClickHouseFieldsFilter guarantees these fields exist on every record
-# (with sensible defaults) so Vector never fails on a missing column.
+# ``propagate=False`` on every entry: each logger has the ``console``
+# handler attached directly, so propagation up to root would duplicate
+# every record. Root stays at WARNING for any third-party library that
+# isn't explicitly listed.
 # ============================================================================
 
-
-class ClickHouseFieldsFilter(logging.Filter):
-    """Inject default values for all ClickHouse schema fields.
-
-    Run as a handler-level filter so it applies to every record that
-    reaches the console handler, regardless of which logger emitted it.
-
-    Side-effects on ``LogRecord``:
-    - Adds ``level``   alias for ``levelname``  (ClickHouse column name)
-    - Adds ``logger``  alias for ``name``        (ClickHouse column name)
-    - Fills missing ClickHouse-specific fields with safe defaults
-    - Serialises ``exc_info`` into the ``exception`` field as a plain string
-    """
-
-    _DEFAULTS: dict[str, object] = {
-        "trace_id": "",
-        "span_id": "",
-        "user_id": None,
-        "request_id": "",
-        "log_type": "app",
-        "service": SERVICE_NAME,
-        "environment": ENVIRONMENT,
-        "host": HOST,
-        "exception": "",
-        "extra": "",
-    }
-
-    def filter(self, record: logging.LogRecord) -> bool:
-        # Rename standard fields to match ClickHouse column names
-        record.level = record.levelname  # type: ignore[attr-defined]
-        record.logger = record.name  # type: ignore[attr-defined]
-
-        # Inject missing fields with defaults
-        for field, default in self._DEFAULTS.items():
-            if not hasattr(record, field):
-                setattr(record, field, default)
-
-        # Capture exc_info → exception field (plain text, not JSON-escaped)
-        if record.exc_info and not getattr(record, "exception", ""):
-            record.exception = "".join(  # type: ignore[attr-defined]
-                traceback.format_exception(*record.exc_info)
-            )
-
-        return True
-
-
-LOGGING: dict[str, Any] = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    # ------------------------------------------------------------------
-    # Filters
-    # ------------------------------------------------------------------
-    "filters": {
-        "clickhouse_fields": {
-            "()": "settings.settings_logging.ClickHouseFieldsFilter",
-        },
-    },
-    # ------------------------------------------------------------------
-    # Formatters
-    # ------------------------------------------------------------------
-    # `pythonjsonlogger` picks up %(field)s names from the format string
-    # and emits them as JSON keys.  We use our aliased names (level,
-    # logger) that were set by the filter above.
-    # ------------------------------------------------------------------
-    "formatters": {
-        "json": {
-            "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
-            "format": (
-                "%(asctime)s %(level)s %(logger)s %(message)s "
-                "%(service)s %(environment)s %(host)s "
-                "%(trace_id)s %(span_id)s "
-                "%(user_id)s %(request_id)s "
-                "%(log_type)s %(exception)s %(extra)s"
-            ),
-        },
-    },
-    # ------------------------------------------------------------------
-    # Handlers
-    # ------------------------------------------------------------------
-    "handlers": {
-        "console": {
-            "class": "logging.StreamHandler",
-            "formatter": "json",
-            "filters": ["clickhouse_fields"],
-        },
-    },
-    # ------------------------------------------------------------------
-    # Root logger — WARNING and above from third-party libs go to console
-    # ------------------------------------------------------------------
-    "root": {
-        "handlers": ["console"],
-        "level": "WARNING",
-    },
-    # ------------------------------------------------------------------
-    # App loggers
-    # ------------------------------------------------------------------
-    "loggers": {
-        # All app code under the `apps` package
+LOGGING: dict[str, Any] = build_logging_config(
+    service_name=SERVICE_NAME,
+    environment=ENVIRONMENT,
+    host=HOST,
+    log_level="WARNING",
+    extra_loggers={
         "apps": {
             "handlers": ["console"],
             "level": "INFO",
             "propagate": False,
         },
-        # Celery worker / beat logs
         "celery": {
             "handlers": ["console"],
             "level": "INFO",
@@ -150,7 +84,6 @@ LOGGING: dict[str, Any] = {
             "level": "INFO",
             "propagate": False,
         },
-        # Django request/server logs (keep at WARNING to avoid noise)
         "django": {
             "handlers": ["console"],
             "level": "WARNING",
@@ -162,4 +95,4 @@ LOGGING: dict[str, Any] = {
             "propagate": False,
         },
     },
-}
+)

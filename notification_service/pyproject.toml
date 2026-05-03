@@ -7,15 +7,13 @@ requires-python = ">=3.12"
 dependencies = [
     "faststream[kafka,cli]>=0.6.7",
     "pydantic-settings>=2.0.0",
-    "prototype-highly-loaded-distributed-service-utils==0.1.5",
+    "prototype-highly-loaded-distributed-service-utils==0.2.0",
     # Kafka compression libraries (required by aiokafka)
     "lz4>=4.0.0",
     "python-snappy>=0.7.0",
     "zstandard>=0.22.0",
     # ASGI server for serving AsyncAPI docs
     "uvicorn>=0.30.0",
-    # Structured JSON logs for the Vector → ClickHouse pipeline
-    "python-json-logger>=4.1.0",
 ]
 
 [project.optional-dependencies]

@@ -16,6 +16,7 @@ nav:
     - Apache Kafka: technologies/kafka.md
     - Celery & Django Celery Beat: technologies/celery.md
     - PgBouncer: technologies/pgbouncer.md
+    - PostgreSQL Dump & Restore: technologies/postgres-dump-restore.md
     - PyPI Publishing: technologies/pypi-publishing.md
     - FastStream: technologies/faststream.md
   - Changelog:

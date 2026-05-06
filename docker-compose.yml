@@ -232,6 +232,17 @@ services:
       retries: 10
       start_period: 15s
 
+  databasus:
+      #  backup service (PostgreSQL, MariaDB, MongoDB)
+      #    https://databasus.com/#installation
+      container_name: databasus
+      image: databasus/databasus:latest
+      ports:
+        - "4005:4005"
+      volumes:
+        - ./data/databasus-data:/databasus-data
+      restart: unless-stopped
+
   # ============================================================================
   # Application Services
   # ============================================================================

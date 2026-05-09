@@ -1,0 +1,90 @@
+# Collect logs only from containers that opt in via the `logging=vector`
+# Docker label. This avoids parsing noise from Kafka brokers, Postgres,
+# RabbitMQ, UIs, ClickHouse, and Vector itself (which would otherwise
+# create a feedback loop). New services join the pipeline by adding the
+# label in docker-compose.yml — no edits to this file required.
+[sources.docker_logs]
+type = "docker_logs"
+include_labels = ["logging=vector"]
+
+# Application services emit JSON lines via the `python-json-logger` package
+# (https://pypi.org/project/python-json-logger/), configured in each service's
+# logging settings. The presence of `asctime` in the parsed object is what
+# distinguishes our structured logs from any other JSON that might appear
+# on stdout (e.g. health-check probes, framework boot banners).
+[transforms.parse_json]
+type = "remap"
+inputs = ["docker_logs"]
+source = '''
+# Drop non-JSON lines silently
+parsed, err = parse_json(.message)
+if err != null || !is_object(parsed) {
+    abort
+}
+
+# Drop anything without asctime — not from our structured logger
+if !exists(parsed.asctime) {
+    abort
+}
+
+# Python asctime: "2026-05-01 15:26:35,852" — comma before ms → replace with dot
+asctime_fixed = replace(string!(parsed.asctime), ",", ".")
+ts, err = parse_timestamp(asctime_fixed, "%Y-%m-%d %H:%M:%S%.3f")
+if err != null {
+    ts, err = parse_timestamp(asctime_fixed, "%Y-%m-%d %H:%M:%S")
+    if err != null {
+        abort
+    }
+}
+
+# Format timestamp as ClickHouse DateTime64(3) string: "YYYY-MM-DD HH:MM:SS.mmm"
+timestamp_str = format_timestamp!(ts, "%Y-%m-%d %H:%M:%S%.3f")
+
+# Rebuild event with ONLY schema fields
+. = {
+    "timestamp":   timestamp_str,
+    "environment": string(parsed.environment) ?? "production",
+    "service":     string(parsed.service)     ?? "unknown",
+    "host":        string(parsed.host)        ?? "unknown",
+    "level":       string(parsed.level)       ?? "INFO",
+    "log_type":    string(parsed.log_type)    ?? "app",
+    "logger":      string(parsed.logger)      ?? "",
+    "trace_id":    string(parsed.trace_id)    ?? "",
+    "span_id":     string(parsed.span_id)     ?? "",
+    "user_id":     parsed.user_id,
+    "request_id":  string(parsed.request_id)  ?? "",
+    "message":     string(parsed.message)     ?? "",
+    "exception":   string(parsed.exception)   ?? "",
+    "extra":       string(parsed.extra)       ?? ""
+}
+'''
+
+# Debug-only sink: prints every transformed event to Vector's stdout so we can
+# inspect the exact payload that's being sent to ClickHouse (`docker logs vector`).
+# Useful while iterating on the VRL transform or schema, since errors from the
+# ClickHouse sink (e.g. 400 Bad Request on unknown fields) don't show the
+# offending payload.
+#
+# Safe to leave enabled because `include_labels = ["logging=vector"]` in the
+# source filters out the `vector` container itself, so this stdout output is
+# NOT re-ingested — no feedback loop.
+#
+# Remove (or comment out) once the pipeline is stable to reduce noise in
+# `docker logs vector` and save a small amount of CPU on JSON re-encoding.
+[sinks.console_debug]
+type = "console"
+inputs = ["parse_json"]
+encoding.codec = "json"
+
+[sinks.clickhouse]
+type = "clickhouse"
+inputs = ["parse_json"]
+endpoint = "http://clickhouse:8123"
+database = "default"
+table = "logs"
+skip_unknown_fields = true
+
+[sinks.clickhouse.auth]
+strategy = "basic"
+user = "${CLICKHOUSE_USER}"
+password = "${CLICKHOUSE_PASSWORD}"

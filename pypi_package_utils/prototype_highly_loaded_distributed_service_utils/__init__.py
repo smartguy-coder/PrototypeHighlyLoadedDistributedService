@@ -4,13 +4,17 @@ Prototype Highly Loaded Distributed Service Utils.
 Shared utilities for microservices ecosystem.
 """
 
-__version__ = "0.1.6"
+__version__ = "0.2.0"
 __author__ = "Vasyl Kartychak"
 
 from prototype_highly_loaded_distributed_service_utils.kafka import (
     KafkaTopic,
     NotificationChannel,
     OTPNotificationSchema,
+)
+from prototype_highly_loaded_distributed_service_utils.logging import (
+    ClickHouseFieldsFilter,
+    build_logging_config,
 )
 
 __all__ = [
@@ -19,4 +23,7 @@ __all__ = [
     "OTPNotificationSchema",
     # Kafka topics
     "KafkaTopic",
+    # Logging
+    "ClickHouseFieldsFilter",
+    "build_logging_config",
 ]

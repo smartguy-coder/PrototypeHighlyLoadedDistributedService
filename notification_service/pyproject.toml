@@ -7,7 +7,7 @@ requires-python = ">=3.12"
 dependencies = [
     "faststream[kafka,cli]>=0.6.7",
     "pydantic-settings>=2.0.0",
-    "prototype-highly-loaded-distributed-service-utils==0.1.5",
+    "prototype-highly-loaded-distributed-service-utils==0.2.0",
     # Kafka compression libraries (required by aiokafka)
     "lz4>=4.0.0",
     "python-snappy>=0.7.0",

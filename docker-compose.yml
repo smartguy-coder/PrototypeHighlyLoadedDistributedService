@@ -250,6 +250,8 @@ services:
   storefront_catalog_service:
     container_name: storefront_catalog_service
     hostname: storefrontCatalogService
+    labels:
+      logging: vector
     ports:
       - "8000:8000"
     build:
@@ -285,6 +287,9 @@ services:
       - .env
 
   celery_worker:
+    container_name: celery_worker
+    labels:
+      logging: vector
     build:
       dockerfile: Dockerfile
       context: ./storefront_catalog_service
@@ -303,6 +308,9 @@ services:
       - .env
 
   celery_beat:
+    container_name: celery_beat
+    labels:
+      logging: vector
     build:
       dockerfile: Dockerfile
       context: ./storefront_catalog_service
@@ -391,6 +399,8 @@ services:
   notification_service:
     container_name: notification_service
     hostname: notificationService
+    labels:
+      logging: vector
     build:
       dockerfile: Dockerfile
       context: ./notification_service
@@ -404,7 +414,7 @@ services:
     command: ["uvicorn", "main:asgi_app", "--host", "0.0.0.0", "--port", "11111", "--reload"]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:11111/health"]
-      interval: 10s
+      interval: 60s
       timeout: 5s
       retries: 3
       start_period: 10s
@@ -413,6 +423,68 @@ services:
     env_file:
       - .env
 
+  # ============================================================================
+  # Highload logging
+  # ============================================================================
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    container_name: clickhouse
+    hostname: clickhouse
+    restart: unless-stopped
+    ports:
+      - "8123:8123"   # HTTP interface
+      # - "9000:9000"   # TLC - I cannot set, everything works via 8123
+    environment:
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    env_file:
+      - .env
+    volumes:
+      - ./data/clickhouse:/var/lib/clickhouse
+      - ./clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  vector:
+    image: timberio/vector:nightly-distroless-libc
+    container_name: vector
+    hostname: vector
+    restart: unless-stopped
+    command: ["--config", "/etc/vector/vector.toml"]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./vector.toml:/etc/vector/vector.toml
+    env_file:
+      - .env
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    hostname: grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    environment:
+      GF_INSTALL_PLUGINS: grafana-clickhouse-datasource
+    profiles:
+      - ui
+      - monitoring
 
 volumes:
   kafka-1-data:

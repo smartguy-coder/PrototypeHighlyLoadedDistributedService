@@ -17,6 +17,7 @@ Usage:
 """
 
 import logging
+import logging.config
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -25,11 +26,9 @@ from faststream import ContextRepo, FastStream
 from faststream.asgi import AsgiFastStream, make_ping_asgi
 from faststream.kafka import KafkaBroker
 from handlers import otp_router
+from logging_config import LOGGING
 
-logging.basicConfig(
-    level=settings.LOG_LEVEL,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
+logging.config.dictConfig(LOGGING)
 logger = logging.getLogger(__name__)
 
 

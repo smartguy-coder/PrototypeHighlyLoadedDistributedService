@@ -8,7 +8,7 @@ This is the single source of truth for all Kafka message schemas
 across the microservices ecosystem.
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from enum import StrEnum
 from typing import Self
 

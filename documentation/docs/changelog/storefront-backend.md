@@ -4,6 +4,16 @@ Django REST API for storefront operations — user management, catalog, and orde
 
 **Tech Stack:** Django 6, Django REST Framework, PostgreSQL
 
+## 0.9.0 — 2026-05-02
+
+[:octicons-git-pull-request-16: PR #14](https://github.com/smartguy-coder/PrototypeHighlyLoadedDistributedService/pull/14)
+
+### :material-plus: Added
+
+- ClickHouse as a log storage
+
+---
+
 ## 0.8.0 — 2026-04-25
 
 [:octicons-git-pull-request-16: PR #13](https://github.com/smartguy-coder/PrototypeHighlyLoadedDistributedService/pull/13)

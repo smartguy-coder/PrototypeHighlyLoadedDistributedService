@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "prototype-highly-loaded-distributed-service-utils"
-version = "0.1.6"
-description = "Shared utilities for PrototypeHighlyLoadedDistributedService microservices"
+version = "0.2.0"
+description = "Shared utilities for PrototypeHighlyLoadedDistributedService microservices: Kafka schemas, topic enums, and the ClickHouse logging pipeline integration"
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.12"
@@ -14,6 +14,9 @@ authors = [
 ]
 dependencies = [
     "pydantic>=2.0",
+    # Required by build_logging_config(): the JSON formatter referenced
+    # via dictConfig ("pythonjsonlogger.json.JsonFormatter") lives here.
+    "python-json-logger>=4.1.0",
 ]
 keywords = [
     "microservices",
@@ -22,6 +25,9 @@ keywords = [
     "kafka",
     "schemas",
     "topics",
+    "logging",
+    "clickhouse",
+    "observability",
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",

@@ -6,17 +6,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ---
 
-## Services Overview
-
-| Service | Latest Version | Status | Last Updated |
-|---------|----------------|--------|--------------|
-| [Storefront Frontend](storefront-frontend.md) | 0.1.1          | ✅ Active | 2026-03-11   |
-| [Storefront Backend](storefront-backend.md) | 0.2.0          | ✅ Active | 2026-03-12   |
-
-
----
-
-
 ## Version Format
 
 ```

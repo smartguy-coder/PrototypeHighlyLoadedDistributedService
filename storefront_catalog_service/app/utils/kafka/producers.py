@@ -13,11 +13,11 @@ Import and use directly:
     })
 """
 
-from kafka.producer import BaseKafkaProducer, create_producer
 from prototype_highly_loaded_distributed_service_utils.kafka import (
     KafkaTopic,
     OTPNotificationSchema,
 )
+from utils.kafka.producer import BaseKafkaProducer, create_producer
 
 
 class OTPNotificationProducer(BaseKafkaProducer[OTPNotificationSchema]):

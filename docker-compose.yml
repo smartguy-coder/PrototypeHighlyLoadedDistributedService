@@ -43,6 +43,13 @@ x-kafka-depends-on: &kafka-depends-on
   kafka-3:
     condition: service_healthy
 
+# ---------- CockroachDB ----------
+# Common config for all three nodes. Per-node values (hostname, advertise-addr,
+# ports, volume) stay in each service — these are intentionally distinct.
+x-roach-common: &roach-common
+  image: cockroachdb/cockroach:v24.2.0
+  restart: unless-stopped
+
 # ============================================================================
 # Services
 # ============================================================================
@@ -244,6 +251,78 @@ services:
       restart: unless-stopped
 
   # ============================================================================
+  # CockroachDB (3-node distributed cluster) — catalog (dishes) database
+  # ============================================================================
+  # Replication factor 3, raft consensus across nodes. Each node is a SQL
+  # gateway; Django connects to one (roach1) but data is replicated and
+  # auto-rebalanced across all three.
+  #
+  # Ports:
+  #   26257 - SQL (only roach1 exposed to host as 26257)
+  #   8088  - Web UI on roach1 (cluster overview, ranges, replication)
+  #
+  # Init: roach-init runs once, calls `cockroach init`, creates DB+user.
+  # ============================================================================
+
+  roach1:
+    <<: *roach-common
+    container_name: roach1
+    hostname: roach1
+    command: start --insecure --join=roach1,roach2,roach3 --advertise-addr=roach1
+    ports:
+      - "26257:26257"  # db connection
+      - "8088:8080"  # ui
+    volumes:
+      - ./data/roach1:/cockroach/cockroach-data
+    healthcheck:
+      test: ["CMD", "cockroach", "sql", "--insecure", "-e", "SELECT 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  roach2:
+    <<: *roach-common
+    container_name: roach2
+    hostname: roach2
+    command: start --insecure --join=roach1,roach2,roach3 --advertise-addr=roach2
+    volumes:
+      - ./data/roach2:/cockroach/cockroach-data
+
+  roach3:
+    <<: *roach-common
+    container_name: roach3
+    hostname: roach3
+    command: start --insecure --join=roach1,roach2,roach3 --advertise-addr=roach3
+    volumes:
+      - ./data/roach3:/cockroach/cockroach-data
+
+  roach-init:
+    image: cockroachdb/cockroach:v24.2.0
+    container_name: roach-init
+    depends_on:
+      - roach1
+      - roach2
+      - roach3
+    restart: "no"
+    # Insecure CockroachDB clusters DO NOT support password authentication
+    # (CREATE USER ... WITH PASSWORD fails with SQLSTATE 28P01). The `django`
+    # user is therefore created without a password. Cockroach in --insecure
+    # mode trusts the username on the wire, no auth happens. This is fine
+    # for local dev; for prod use --certs-dir + cert-based auth.
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      "
+      sleep 8 &&
+      cockroach init --insecure --host=roach1 || true &&
+      cockroach sql --insecure --host=roach1 --user=root -e \"
+        CREATE DATABASE IF NOT EXISTS catalog;
+        CREATE USER IF NOT EXISTS django;
+        GRANT ALL ON DATABASE catalog TO django;
+      \"
+      "
+
+  # ============================================================================
   # Application Services
   # ============================================================================
 
@@ -272,12 +351,16 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      roach-init:
+        condition: service_completed_successfully
     command: |
       sh -c "
       echo 'Waiting for PgBouncer...' &&
       sleep 5 &&
-      echo 'Running migrations directly against PostgreSQL...' &&
+      echo 'Running Postgres migrations directly against PostgreSQL...' &&
       USE_PGBOUNCER=false uv run python manage.py migrate &&
+      echo 'Running CockroachDB migrations for the catalog app...' &&
+      uv run python manage.py migrate --database=catalog &&
       uv run python manage.py create_kafka_topics --partitions 3 --replication-factor 3 &&
       uv run python manage.py runserver 0.0.0.0:8000
       "

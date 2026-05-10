@@ -5,7 +5,7 @@ Provides Kafka producers, schemas, and high-level services
 for async messaging.
 
 Quick Start (recommended - use services):
-    from kafka.services import send_otp_notification
+    from utils.kafka.services import send_otp_notification
 
     send_otp_notification(
         verification_code="123456",
@@ -31,24 +31,23 @@ Schemas and topics (from shared utils package):
     )
 """
 
-from kafka.producer import (
-    BaseKafkaProducer,
-    KafkaPublisherException,
-    create_producer,
-    flush_all_producers,
-)
-from kafka.producers import (
-    otp_notification_producer,
-)
-from kafka.services import (
-    send_otp_notification,
-)
-
 # Re-export schemas and topics from shared package for convenience
 from prototype_highly_loaded_distributed_service_utils.kafka import (
     KafkaTopic,
     NotificationChannel,
     OTPNotificationSchema,
+)
+from utils.kafka.producer import (
+    BaseKafkaProducer,
+    KafkaPublisherException,
+    create_producer,
+    flush_all_producers,
+)
+from utils.kafka.producers import (
+    otp_notification_producer,
+)
+from utils.kafka.services import (
+    send_otp_notification,
 )
 
 __all__ = [

@@ -377,7 +377,7 @@ services:
 
 ---
 
-## Admin Console & Monitoring
+## Admin Console & Monitoring { #admin-console--monitoring }
 
 ### Connecting to PgBouncer Admin Console
 

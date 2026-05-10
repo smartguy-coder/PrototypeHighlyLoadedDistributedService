@@ -209,7 +209,7 @@ With `ACKS_LATE=True`: if a worker crashes mid-task, the message returns to the 
 
 ---
 
-## Deferred Execution: ETA & Countdown
+## Deferred Execution: ETA & Countdown { #deferred-execution-eta--countdown }
 
 Sometimes you need to run a task not immediately, but **at a specific time in the future** — a one-shot deferred execution. Celery supports this natively via `eta` and `countdown` parameters of `apply_async()`.
 

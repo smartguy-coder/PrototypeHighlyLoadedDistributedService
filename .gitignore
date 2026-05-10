@@ -10,6 +10,10 @@ db.sqlite3
 # Database persistent storage (bind mount)
 /data/
 
+# CockroachDB CA private key (NEVER commit this)
+# Note: ./certs/ IS committed for dev convenience — see certs/README.md
+/certs-ca/
+
 # pypi package
 /pypi_package_utils/uv.lock
 /pypi_package_utils/build/

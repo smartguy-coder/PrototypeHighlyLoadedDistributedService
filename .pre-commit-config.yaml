@@ -25,6 +25,12 @@ repos:
         args: ['--maxkb=1000']
       - id: check-merge-conflict
       - id: detect-private-key
+        # ./certs/ contains development-only TLS keys for the local CockroachDB
+        # cluster. They protect a Docker network with no real data and are
+        # regenerable via `make cockroach-certs`. The CA private key (the only
+        # one that actually matters) lives in ./certs-ca/, which is gitignored.
+        # See certs/README.md for the full rationale.
+        exclude: ^certs/.*\.key$
 
   # =============================================================================
   # Python Backend (storefront_catalog_service)

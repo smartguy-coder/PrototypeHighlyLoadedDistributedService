@@ -3,6 +3,11 @@ STOREFRONT_BACKEND_CONTAINER = storefront_catalog_service
 PYTHON = python
 MANAGE_PY = manage.py
 
+# CockroachDB cert generation
+COCKROACH_IMAGE = cockroachdb/cockroach:v24.2.0
+CERTS_DIR = ./certs
+CA_DIR = ./certs-ca
+
 .DEFAULT_GOAL := help
 
 # =============================================================================
@@ -23,6 +28,10 @@ init: ## First time setup: install deps, build and start containers
 	@if [ ! -f .env ]; then \
 		echo "📄 Creating .env from .env.example..."; \
 		cp .env.example .env; \
+	fi
+	@if [ ! -f $(CERTS_DIR)/ca.crt ]; then \
+		echo "🔐 Generating CockroachDB certificates..."; \
+		$(MAKE) cockroach-certs; \
 	fi
 	@echo "📦 Installing backend dev dependencies..."
 	cd storefront_catalog_service && uv sync --extra dev
@@ -60,6 +69,64 @@ restart: down up ## Restart all containers
 .PHONY: logs
 logs: ## Show container logs
 	$(DOCKER_COMPOSE) logs -f
+
+# =============================================================================
+# CockroachDB Certificates
+# =============================================================================
+# Generates TLS certificates for the secure CockroachDB cluster.
+# - $(CERTS_DIR)   — ca.crt + node certs + root client cert (committed for dev)
+# - $(CA_DIR)      — ca.key (gitignored, do NOT commit)
+#
+# This runs the `cockroach cert` subcommands inside a one-shot container so you
+# don't need cockroach installed locally. The cluster nodes mount $(CERTS_DIR)
+# read-only at runtime.
+# =============================================================================
+
+.PHONY: cockroach-certs
+cockroach-certs: ## Generate CockroachDB TLS certificates (idempotent)
+	@if [ -f $(CERTS_DIR)/ca.crt ] && [ -f $(CERTS_DIR)/node.crt ] && [ -f $(CERTS_DIR)/client.root.crt ]; then \
+		echo "✅ Certificates already exist in $(CERTS_DIR). Run 'make cockroach-certs-clean' to wipe and regenerate."; \
+		exit 0; \
+	fi
+	@echo "🔐 Generating CockroachDB certificates..."
+	@mkdir -p $(CERTS_DIR) $(CA_DIR)
+	@docker run --rm \
+		-v $(PWD)/$(CERTS_DIR):/certs \
+		-v $(PWD)/$(CA_DIR):/ca \
+		$(COCKROACH_IMAGE) \
+		cert create-ca --certs-dir=/certs --ca-key=/ca/ca.key
+	@docker run --rm \
+		-v $(PWD)/$(CERTS_DIR):/certs \
+		-v $(PWD)/$(CA_DIR):/ca \
+		$(COCKROACH_IMAGE) \
+		cert create-node roach1 roach2 roach3 localhost 127.0.0.1 \
+		--certs-dir=/certs --ca-key=/ca/ca.key
+	@docker run --rm \
+		-v $(PWD)/$(CERTS_DIR):/certs \
+		-v $(PWD)/$(CA_DIR):/ca \
+		$(COCKROACH_IMAGE) \
+		cert create-client root --certs-dir=/certs --ca-key=/ca/ca.key
+	@# CockroachDB requires private keys to have mode 0600 (or 0700) — anything
+	@# more permissive (e.g. 0644) makes nodes refuse to start. Public certs
+	@# get 0644 because everything mounting them needs read access.
+	@chmod 600 $(CERTS_DIR)/*.key $(CA_DIR)/*.key
+	@chmod 644 $(CERTS_DIR)/*.crt
+	@echo "✅ Certificates generated:"
+	@echo "   $(CERTS_DIR)/ca.crt              — trust anchor (mounted into all roach* and the app)"
+	@echo "   $(CERTS_DIR)/node.crt + node.key — node identity (mounted into roach1-3 only)"
+	@echo "   $(CERTS_DIR)/client.root.crt     — root client cert (used by roach-init)"
+	@echo "   $(CA_DIR)/ca.key                 — CA private key (KEEP LOCAL, gitignored)"
+
+.PHONY: cockroach-certs-clean
+cockroach-certs-clean: ## Wipe all generated CockroachDB certificates
+	@echo "🧹 Removing $(CERTS_DIR) and $(CA_DIR)..."
+	rm -rf $(CERTS_DIR) $(CA_DIR)
+	@echo "✅ Certs wiped. Run 'make cockroach-certs' to regenerate."
+
+.PHONY: cockroach-certs-rotate
+cockroach-certs-rotate: cockroach-certs-clean cockroach-certs ## Wipe and regenerate certs (also wipes Cockroach data — see warning)
+	@echo "⚠️  Cockroach data dirs (./data/roach1-3) were signed by the OLD CA and will not work with new certs."
+	@echo "   To get a clean cluster: 'docker compose down && rm -rf data/roach1 data/roach2 data/roach3 && docker compose up -d'"
 
 # =============================================================================
 # Pre-commit

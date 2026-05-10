@@ -17,7 +17,7 @@ In this project CockroachDB stores the **catalog (dishes)** — the largest, mos
 7. [The Database Router](#the-database-router)
 8. [Migrations](#migrations)
 9. [Schema Design Considerations](#schema-design-considerations)
-10. [Insecure Mode and Authentication](#insecure-mode-and-authentication)
+10. [Secure Mode: TLS Certificates and Authentication](#secure-mode-tls-certificates-and-authentication)
 11. [Web UI and Operations](#web-ui-and-operations)
 12. [Trade-offs and Caveats](#trade-offs-and-caveats)
 13. [References](#references)
@@ -433,14 +433,19 @@ roach-init:
   image: cockroachdb/cockroach:v24.2.0
   depends_on: [roach1, roach2, roach3]
   restart: "no"
+  volumes:
+    - ./certs:/certs:ro
+  environment:
+    COCKROACH_PASSWORD: ${COCKROACH_PASSWORD}
   entrypoint: ["/bin/sh", "-c"]
   command: |
     "
     sleep 8 &&
-    cockroach init --insecure --host=roach1 || true &&
-    cockroach sql --insecure --host=roach1 --user=root -e \"
+    cockroach init --certs-dir=/certs --host=roach1 || true &&
+    cockroach sql --certs-dir=/certs --host=roach1 --user=root -e \"
       CREATE DATABASE IF NOT EXISTS catalog;
-      CREATE USER IF NOT EXISTS django;
+      CREATE USER IF NOT EXISTS django WITH PASSWORD '$COCKROACH_PASSWORD';
+      ALTER USER django WITH PASSWORD '$COCKROACH_PASSWORD';
       GRANT ALL ON DATABASE catalog TO django;
     \"
     "
@@ -449,7 +454,8 @@ roach-init:
 A few subtleties worth understanding:
 
 - `|| true` after `cockroach init` swallows the "cluster already initialized" error on subsequent runs. The init step is idempotent in spirit but not in exit code.
-- `--user=root` is required even on insecure clusters: the SQL shell otherwise reads `COCKROACH_USER` from the environment and tries to connect as that user, which then fails on DDL like `CREATE USER`.
+- `--user=root` is required: the SQL shell otherwise reads `COCKROACH_USER` from the environment and tries to connect as that user, which then fails on DDL like `CREATE USER`. The `root` client cert (in `./certs`) is what authorises this admin connection.
+- `ALTER USER ... WITH PASSWORD` after `CREATE USER IF NOT EXISTS` makes the bootstrap idempotent against password changes — if `COCKROACH_PASSWORD` in `.env` was rotated, re-running `roach-init` updates the existing user instead of failing on "user already exists".
 - `restart: "no"` means the container runs once and stops. **Important:** if you change this `command:`, you must `docker compose rm -sf roach-init` before `docker compose up -d roach-init` will pick it up — compose otherwise reuses the existing exited container as-is.
 
 ### Persistent Storage
@@ -525,7 +531,8 @@ DATABASES = {
         "CONN_HEALTH_CHECKS": True,
         "OPTIONS": {
             "connect_timeout": 10,
-            "sslmode": config("COCKROACH_SSLMODE", default="disable"),
+            "sslmode": config("COCKROACH_SSLMODE", default="verify-full"),
+            "sslrootcert": config("COCKROACH_SSLROOTCERT", default="/certs/ca.crt"),
         },
     },
 }
@@ -539,7 +546,7 @@ A few notes:
 - **`ENGINE: django_cockroachdb`** — this is a third-party backend (`uv add django-cockroachdb`) maintained by Cockroach Labs. It subclasses Django's Postgres backend and patches the bits that don't translate (e.g., it disables Django's sequence handling, since Cockroach uses `unique_rowid()` instead of sequences; it adapts certain DDL).
 - **`DISABLE_COCKROACHDB_TELEMETRY = True`** — by default `django_cockroachdb` queries `crdb_internal.node_build_info` on every `connect()` to send anonymous usage stats to Cockroach Labs. Harmless, but adds a round-trip per connection. Off for a learning project.
 - **`CONN_MAX_AGE: 600`** — persistent connections, since this connection bypasses PgBouncer (the `catalog` connection goes straight to roach1). Cockroach handles long-lived connections fine; just be aware that if `roach1` dies, idle connections in the pool will hang until the next health check.
-- **`sslmode=disable`** — required because the cluster runs in `--insecure` mode. See [Insecure Mode and Authentication](#insecure-mode-and-authentication).
+- **`sslmode=verify-full` + `sslrootcert=/certs/ca.crt`** — the cluster runs in secure mode. Django establishes a TLS connection, validates the server's cert against the CA we mount in, then sends the password inside the encrypted channel. See [Secure Mode: TLS Certificates and Authentication](#secure-mode-tls-certificates-and-authentication).
 
 ---
 
@@ -662,7 +669,7 @@ storefront_catalog_service:
 After migration, the catalog database should contain *only* the catalog tables plus Django's own bookkeeping:
 
 ```bash
-docker compose exec roach1 cockroach sql --insecure --host=roach1 --user=root -d catalog \
+docker compose exec roach1 cockroach sql --certs-dir=/certs --host=roach1 --user=root -d catalog \
     -e "SHOW TABLES;"
 ```
 
@@ -684,14 +691,14 @@ The most common failure mode: you run `migrate --database=catalog` once with a b
 Diagnosis:
 
 ```bash
-docker compose exec roach1 cockroach sql --insecure --host=roach1 --user=root -d catalog \
+docker compose exec roach1 cockroach sql --certs-dir=/certs --host=roach1 --user=root -d catalog \
     -e "SELECT app, name, applied FROM django_migrations ORDER BY applied;"
 ```
 
 If you see entries for `catalog` but `SHOW TABLES` doesn't list `catalog_dish`, the simplest fix is a clean reset:
 
 ```bash
-docker compose exec roach1 cockroach sql --insecure --host=roach1 --user=root -e "
+docker compose exec roach1 cockroach sql --certs-dir=/certs --host=roach1 --user=root -e "
   DROP DATABASE IF EXISTS catalog CASCADE;
   CREATE DATABASE catalog;
   GRANT ALL ON DATABASE catalog TO django;
@@ -765,16 +772,25 @@ Already mentioned, worth repeating: `restaurant_id` is a `UUIDField`, not a `For
 
 ---
 
-## Insecure Mode and Authentication
+## Secure Mode: TLS Certificates and Authentication
 
-The cluster runs with `--insecure`:
+CockroachDB supports two operating modes: **insecure** (no TLS, no authentication) and **secure** (TLS-encrypted node-to-node and client-to-server traffic, with either certificate-based or password-based client auth). This project ships with the **secure mode** enabled, because it is the only configuration that resembles a real deployment and the only one that lets you exercise password-authenticated connections from Django.
 
-```yaml
-roach1:
-  command: start --insecure --join=roach1,roach2,roach3 --advertise-addr=roach1
-```
+This section documents both modes — what each looks like, when each is appropriate — and then walks through how the secure setup works in this repo and how it would look in production.
 
-This means: no TLS between nodes, no TLS between client and cluster, **and no password authentication.** This last one trips people up.
+### The Two Modes Side by Side
+
+| Aspect | Insecure (`--insecure`) | Secure (`--certs-dir=...`) |
+|---|---|---|
+| Inter-node traffic | Plaintext | TLS, mutual auth via node certs |
+| Client ↔ server traffic | Plaintext | TLS, server cert verified by client |
+| Client authentication | Username on the wire, trusted as-is | Client cert OR password (over TLS) |
+| `CREATE USER ... WITH PASSWORD` | **Rejected** (SQLSTATE 28P01) | Accepted |
+| Admin UI | HTTP | HTTPS |
+| Setup cost | Zero | Generate CA, node certs, root client cert |
+| Resembles production | No | Yes |
+
+Insecure mode exists so you can spin up a cluster in five seconds for a demo or a unit test. CockroachDB's documentation is explicit that it should never be used outside development — there is no audit trail of who did what, and any process on the network can read or write any data. We use insecure mode in this repo's history (the original commit) and then upgrade to secure mode precisely so the upgrade itself is part of the learning material.
 
 ### Why You Cannot Set a Password in Insecure Mode
 
@@ -786,41 +802,243 @@ CREATE USER django WITH PASSWORD 'whatever';
 -- SQLSTATE: 28P01
 ```
 
-This is intentional. CockroachDB's threat model treats password-only auth without TLS as "false security": the password traverses the network in plaintext, and a casual observer of the wire sees it. Rather than let you ship a setup that *looks* secure but isn't, Cockroach refuses.
+This is intentional. CockroachDB's threat model treats password-only auth without TLS as "false security": the password traverses the network in plaintext, and a casual observer of the wire sees it. Rather than let you ship a setup that *looks* secure but isn't, Cockroach refuses. Switching to `--certs-dir=...` is what unlocks password authentication — the password then travels inside the encrypted TLS channel, which is the threat model Cockroach considers acceptable.
 
-So in our project the `django` user has no password. Connections succeed because `--insecure` mode trusts the username asserted on the wire.
+### What the Secure Cluster Needs
+
+A secure CockroachDB cluster needs three families of credentials, all derived from a single Certificate Authority (CA):
+
+| File(s) | Purpose | Who reads it |
+|---|---|---|
+| `ca.crt` | Trust anchor. Anything signed by `ca.key` is trusted. | Every node, every client (including Django) |
+| `ca.key` | CA *private* key. Used only to sign new certs. **Never mounted into a running container.** | The cert-generation step only |
+| `node.crt` + `node.key` | Identifies a Cockroach node to its peers and to clients. The cert lists every hostname/IP the node may be reached at. | `roach1`, `roach2`, `roach3` |
+| `client.root.crt` + `client.root.key` | Cert-based identity for the built-in `root` user. Used for admin SQL operations (cluster init, `CREATE USER`, etc.). | `roach-init` only |
+
+The `django` application user does **not** get a client cert in this project. Application users authenticate by password over the encrypted channel — simpler to manage, easier to rotate per service, no need to ship a per-service keypair. The trade-off is documented in the [Best Practice: Production Secrets Management](#best-practice-production-secrets-management) subsection below.
+
+### Generating Certificates: `make cockroach-certs`
+
+Three Make targets cover the cert lifecycle:
 
 ```bash
-# This works:
-docker compose exec roach1 cockroach sql --insecure --host=roach1 --user=django -d catalog
-# (no password prompt, drops you into a SQL shell)
-
-# Django's connection string (sslmode=disable, password="") works the same way.
+make cockroach-certs           # generate (idempotent: skips if certs exist)
+make cockroach-certs-clean     # wipe ./certs and ./certs-ca
+make cockroach-certs-rotate    # wipe + regenerate (also requires wiping ./data/roach*)
 ```
 
-### What Production Would Look Like
+Under the hood, `make cockroach-certs` runs three one-shot Docker containers using the official `cockroachdb/cockroach` image — so you don't need the `cockroach` binary installed on the host:
 
-For a real deployment you would:
+```makefile
+cockroach-certs:
+    @docker run --rm \
+        -v $(PWD)/$(CERTS_DIR):/certs \
+        -v $(PWD)/$(CA_DIR):/ca \
+        $(COCKROACH_IMAGE) \
+        cert create-ca --certs-dir=/certs --ca-key=/ca/ca.key
+    @docker run --rm \
+        -v $(PWD)/$(CERTS_DIR):/certs \
+        -v $(PWD)/$(CA_DIR):/ca \
+        $(COCKROACH_IMAGE) \
+        cert create-node roach1 roach2 roach3 localhost 127.0.0.1 \
+        --certs-dir=/certs --ca-key=/ca/ca.key
+    @docker run --rm \
+        -v $(PWD)/$(CERTS_DIR):/certs \
+        -v $(PWD)/$(CA_DIR):/ca \
+        $(COCKROACH_IMAGE) \
+        cert create-client root --certs-dir=/certs --ca-key=/ca/ca.key
+    @chmod 600 $(CERTS_DIR)/*.key $(CA_DIR)/*.key
+    @chmod 644 $(CERTS_DIR)/*.crt
+```
 
-1. Generate a CA, node certificates, and a client certificate via `cockroach cert create-ca`, `create-node`, `create-client`.
-2. Mount the certs into every node and into the Django container.
-3. Replace `--insecure` with `--certs-dir=/cockroach-certs`.
-4. Set `OPTIONS = {"sslmode": "verify-full", "sslrootcert": ..., "sslcert": ..., "sslkey": ...}` in Django.
-5. Optionally enable password auth on top of TLS.
+A few things worth noticing:
 
-For a learning prototype, `--insecure` keeps the surface area small. The trade-off is documented and intentional.
+- **`create-node` lists every hostname the node may be reached at.** We pass `roach1 roach2 roach3 localhost 127.0.0.1` — the three Docker service names, plus `localhost`/`127.0.0.1` for connections from the host (e.g. local `psql` against the published port). The same `node.crt` is reused on all three nodes, which is fine because the cert covers all three hostnames as Subject Alternative Names. If you add a fourth node, you must regenerate.
+- **The CA key lives in `./certs-ca/`, not `./certs/`.** This is the conventional CockroachDB layout, and it has a real reason: only `./certs/` is mounted into long-running containers. The CA key, which is what you'd need to mint a new admin client cert, never sits in any container's filesystem at runtime. If a Cockroach node is compromised, the attacker has the *node* key (which lets them be that node) and `ca.crt` (public, useless on its own) — but cannot use it to sign new credentials.
+- **`chmod 600` on every `*.key`.** CockroachDB refuses to start if any private key is readable by group or other (e.g. `0644`). The check is `key file ... has permissions -rw-r--r--, exceeds -rwxr-----`. The Make target enforces `0600` after generation; if you manually copy certs around, you have to remember the same restriction.
+
+Alternatively, the same generation logic is available as a profile-gated Compose service:
+
+```bash
+docker compose --profile bootstrap up cert-generator
+```
+
+This exists for parity — it produces identical output to the Make target. We chose the Make target as the primary entry point because it's faster to run, easier to script, and easier to debug when something goes wrong.
+
+### How the Secure Cluster Wires Up
+
+Three changes turn the insecure compose file into a secure one:
+
+**1. Each Cockroach node mounts `./certs` read-only and starts with `--certs-dir`:**
+
+```yaml
+roach1:
+  command: start --certs-dir=/certs --join=roach1,roach2,roach3 --advertise-addr=roach1
+  volumes:
+    - ./data/roach1:/cockroach/cockroach-data
+    - ./certs:/certs:ro
+  healthcheck:
+    test: ["CMD", "cockroach", "sql", "--certs-dir=/certs", "--host=roach1", "-e", "SELECT 1"]
+```
+
+The `:ro` is a small but useful safety: a compromised node process can read the certs but cannot tamper with them.
+
+**2. `roach-init` mounts the same certs and now creates the `django` user *with a password*:**
+
+```yaml
+roach-init:
+  volumes:
+    - ./certs:/certs:ro
+  environment:
+    COCKROACH_PASSWORD: ${COCKROACH_PASSWORD}
+  command: |
+    "
+    sleep 8 &&
+    cockroach init --certs-dir=/certs --host=roach1 || true &&
+    cockroach sql --certs-dir=/certs --host=roach1 --user=root -e \"
+      CREATE DATABASE IF NOT EXISTS catalog;
+      CREATE USER IF NOT EXISTS django WITH PASSWORD '$COCKROACH_PASSWORD';
+      ALTER USER django WITH PASSWORD '$COCKROACH_PASSWORD';
+      GRANT ALL ON DATABASE catalog TO django;
+    \"
+    "
+```
+
+The `$` is Compose escape syntax — Compose interpolates `${COCKROACH_PASSWORD}` from `.env` into the env var, then the shell inside the container expands `$COCKROACH_PASSWORD` from that env var into the SQL. Without the `$`, Compose would try to interpolate at the SQL level and you'd see Compose-substitution errors at startup.
+
+**3. The Django app gets only the public CA cert mounted, not the whole certs dir:**
+
+```yaml
+storefront_catalog_service:
+  volumes:
+    - ./storefront_catalog_service/app:/app
+    - ./certs/ca.crt:/certs/ca.crt:ro   # least privilege — only the CA, not node/root keys
+```
+
+This is deliberate. The Django process needs `ca.crt` to verify the server's identity (`sslmode=verify-full` checks the chain). It does **not** need `node.key` (which would let it impersonate a node) or `client.root.key` (which would let it run as `root`). Mounting only the CA file is the application of least privilege at the volume-mount level.
+
+### How Django Connects
+
+The `catalog` database alias in `settings_databases.py` carries three TLS-related options:
+
+```python
+"catalog": {
+    "ENGINE": "django_cockroachdb",
+    "NAME": config("COCKROACH_DB", default="catalog"),
+    "USER": config("COCKROACH_USER", default="django"),
+    "PASSWORD": config("COCKROACH_PASSWORD", default=""),
+    "HOST": config("COCKROACH_HOST", default="roach1"),
+    "PORT": config("COCKROACH_PORT", default="26257"),
+    "OPTIONS": {
+        "connect_timeout": 10,
+        "sslmode": config("COCKROACH_SSLMODE", default="verify-full"),
+        "sslrootcert": config("COCKROACH_SSLROOTCERT", default="/certs/ca.crt"),
+    },
+},
+```
+
+The interesting fields:
+
+| Field | Value | What it does |
+|---|---|---|
+| `USER` | `django` | The SQL user the application authenticates as. Created by `roach-init` with the password from `.env`. |
+| `PASSWORD` | from `.env` | Sent to the server inside the TLS channel, verified against the password stored in Cockroach's system tables. |
+| `sslmode` | `verify-full` | Strictest mode. Django opens TLS, demands a server cert, validates the chain against `sslrootcert`, **and** verifies that the cert's CN/SAN matches the `HOST` value. Anything weaker (`require`, `verify-ca`) opens you up to MITM. |
+| `sslrootcert` | `/certs/ca.crt` | Path inside the container to the CA cert. The Compose mount puts our `./certs/ca.crt` here read-only. |
+
+You can confirm the connection is actually encrypted from a SQL shell:
+
+```bash
+docker compose exec roach1 cockroach sql --certs-dir=/certs --host=roach1 --user=root \
+    -e "SELECT node_id, network, address FROM crdb_internal.node_sessions WHERE user_name = 'django';"
+```
+
+(The Cockroach admin UI's "Sessions" tab shows the same information, with a "TLS" column.)
+
+If you ever see `pq: connection requires SSL` from Django, it means the cluster expects TLS but the client is trying plaintext — typically caused by `sslmode=disable` left over from the insecure setup.
+
+### CLI Access from the Host
+
+The `localhost` and `127.0.0.1` SANs we added to `node.crt` mean you can connect from the host without going through Docker:
+
+```bash
+# As root, using the client cert (no password):
+cockroach sql --certs-dir=./certs --host=localhost --port=26257
+
+# As django, using a password:
+psql "postgresql://django:django_dev_password@localhost:26257/catalog?sslmode=verify-full&sslrootcert=./certs/ca.crt"
+```
+
+The Cockroach admin UI is now HTTPS-only on `https://localhost:8088`. Browsers will warn about a self-signed certificate — that's expected for a dev CA. Add an exception or use `curl --cacert ./certs/ca.crt https://localhost:8088/health` for scripted checks.
+
+### When You Need to Rotate
+
+The test certificates we generate are valid for one year (client) and five years (CA). For a learning project this is effectively forever, but the operational shape of rotation is worth knowing:
+
+```bash
+make cockroach-certs-rotate            # wipes ./certs and ./certs-ca, regenerates fresh
+docker compose down
+rm -rf data/roach1 data/roach2 data/roach3
+docker compose up -d
+```
+
+The data wipe is not optional: Cockroach stores the cluster ID and the trust anchor used at bootstrap. A new CA means the existing `./data/roach*` directories belong to the *old* cluster, and the nodes will refuse to start ("node identity does not match cluster ID"). For real rotation in production, the procedure is more delicate and is described in the next subsection.
+
+### Best Practice: Production Secrets Management
+
+The development setup in this repo is **not** how a production CockroachDB cluster handles certificates. A few principles separate the two.
+
+**1. Never commit certificates or keys to source control.**
+
+We do commit `./certs/` here, deliberately, because the certs only protect a local Docker network with no real data — they are regenerable junk, not secrets. In production this is unacceptable: a leaked CA key gives an attacker the ability to mint a `root` client cert and own the cluster. Production keys live in a secrets manager and never touch a developer's laptop.
+
+Real options, in roughly increasing maturity:
+
+| Approach | Where the CA key lives | How nodes get their certs |
+|---|---|---|
+| Bare-metal classic | An offline air-gapped machine | Manual scp during node provisioning |
+| Cloud secrets manager | AWS Secrets Manager / GCP Secret Manager / Azure Key Vault | Bootstrap script fetches at first boot |
+| HashiCorp Vault PKI | Vault's PKI secrets engine | Each node requests a short-lived cert from Vault |
+| cert-manager + Issuer (Kubernetes) | A `Secret` managed by an Issuer (Vault, Let's Encrypt, internal CA) | `cert-manager` generates per-pod certs and rotates them |
+| Service mesh (mTLS) | The mesh's control plane CA (Istio, Linkerd) | Each pod gets a SPIFFE-style identity cert automatically |
+
+The Avito DBaaS setup described earlier in this document falls into the cert-manager-on-Kubernetes category: each Cockroach pod gets its node cert from a Kubernetes Issuer, and rotation is handled by `cert-manager` controllers without human intervention.
+
+**2. Short-lived certs are better than long-lived certs.**
+
+The defaults from `cockroach cert create-...` are 5 years for the CA and 1 year for client/node certs. That's fine for a homelab; it's much too long for production. Modern PKI advice is to issue certs with weeks-to-days lifetimes and rely on automated rotation. Vault PKI or `cert-manager` make this practical — each node gets a fresh cert before the old one expires, and the rotation never appears as a human operation. The CA itself can stay long-lived because its private key is offline; what rotates is the keys derived from it.
+
+**3. The CA key is more sensitive than any other secret.**
+
+Node keys can be regenerated by re-running `create-node` if the CA key is intact. Client keys can be regenerated similarly. The CA key cannot — if it leaks, every cert ever issued under it is compromised, and you have to bootstrap a brand-new cluster with a brand-new CA. This is the file that lives in an HSM, in an offline vault, in cold storage; not on a build agent and not in a `Dockerfile`.
+
+**4. Application users should authenticate with passwords or short-lived certs from a secrets manager, not long-lived ones from `.env`.**
+
+In this repo the `django` password sits in `.env` and is read by both the app and `roach-init` at startup. That's appropriate for a local prototype but unsuitable for production. Production patterns:
+
+- The application reads its DB password from a secrets manager (Vault, AWS Secrets Manager, Kubernetes external-secrets) at startup, not from a file checked into anything.
+- Rotation is automated: a CronJob or scheduled Vault rotation updates the password in both Cockroach (`ALTER USER ... WITH PASSWORD ...`) and the secrets store. Two service accounts (`django_01`, `django_02`) per service let you rotate one while the other is in active use — the dual-credential pattern Avito uses.
+- Or: skip passwords entirely and give each service a short-lived client cert from Vault PKI. The cert itself is the credential; rotation is just "get a new cert."
+
+**5. CI and developers do not need cluster-admin credentials.**
+
+The `client.root.*` cert in this repo can do anything to the cluster. In production, `root` is reserved for break-glass and bootstrap; CI uses a deploy user (DDL rights, no superuser) and the application uses a runtime user (DML only, no DDL). This mirrors the **Full Access / Read Write / Read Only** role split that the [Avito DBaaS section](#role-model) above describes.
+
+The rule of thumb: in production, you should be able to lose any single laptop, any single CI runner, or any single application pod, and the cluster's security stays intact. The repo's current setup, with secrets in `.env` and certs in git, fails that test deliberately — it's a prototype, optimised for being easy to clone and run, not for surviving compromise.
 
 ---
 
 ## Web UI and Operations
 
-Each Cockroach node serves an admin UI on port 8080 (HTTP, no auth in insecure mode). We expose only roach1's:
+Each Cockroach node serves an admin UI on port 8080 (HTTPS in secure mode). We expose only roach1's:
 
 ```yaml
 roach1:
   ports:
-    - "8088:8080"   # http://localhost:8088
+    - "8088:8080"   # https://localhost:8088
 ```
+
+In secure mode the UI uses the same node certificate the cluster does, so your browser will warn about a self-signed cert (it's signed by a CA we minted ourselves — see [Generating Certificates](#generating-certificates-make-cockroach-certs)). Add an exception or import `./certs/ca.crt` into the system keychain.
 
 What's there:
 
@@ -837,20 +1055,20 @@ For local development this is the fastest way to spot a misconfigured cluster �
 
 ```bash
 # List databases
-docker compose exec roach1 cockroach sql --insecure --host=roach1 --user=root -e "SHOW DATABASES;"
+docker compose exec roach1 cockroach sql --certs-dir=/certs --host=roach1 --user=root -e "SHOW DATABASES;"
 
 # List users
-docker compose exec roach1 cockroach sql --insecure --host=roach1 --user=root -e "SHOW USERS;"
+docker compose exec roach1 cockroach sql --certs-dir=/certs --host=roach1 --user=root -e "SHOW USERS;"
 
 # Cluster node status
-docker compose exec roach1 cockroach node status --insecure --host=roach1
+docker compose exec roach1 cockroach node status --certs-dir=/certs --host=roach1
 
 # Per-range distribution for one table
-docker compose exec roach1 cockroach sql --insecure --host=roach1 --user=root -d catalog \
+docker compose exec roach1 cockroach sql --certs-dir=/certs --host=roach1 --user=root -d catalog \
     -e "SHOW RANGES FROM TABLE catalog_dish;"
 
 # Drop and recreate the catalog DB (nuclear option, for dev only)
-docker compose exec roach1 cockroach sql --insecure --host=roach1 --user=root -e "
+docker compose exec roach1 cockroach sql --certs-dir=/certs --host=roach1 --user=root -e "
   DROP DATABASE IF EXISTS catalog CASCADE;
   CREATE DATABASE catalog;
   GRANT ALL ON DATABASE catalog TO django;

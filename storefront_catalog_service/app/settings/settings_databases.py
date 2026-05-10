@@ -94,7 +94,12 @@ DATABASES = {
     # Env vars:
     #   COCKROACH_HOST, COCKROACH_PORT (default 26257)
     #   COCKROACH_DB, COCKROACH_USER, COCKROACH_PASSWORD
-    #   COCKROACH_SSLMODE (default 'disable' for the local insecure cluster)
+    #   COCKROACH_SSLMODE (default 'verify-full' for the secure cluster)
+    #   COCKROACH_SSLROOTCERT (path to ca.crt; default '/certs/ca.crt' inside the container)
+    #
+    # Cluster runs in SECURE mode (TLS): Django verifies the server using
+    # ca.crt mounted at /certs/ca.crt, then authenticates with username +
+    # password inside the encrypted channel.
     # ========================================================================
     "catalog": {
         # replicas?
@@ -108,7 +113,8 @@ DATABASES = {
         "CONN_HEALTH_CHECKS": True,
         "OPTIONS": {
             "connect_timeout": 10,
-            "sslmode": config("COCKROACH_SSLMODE", default="disable"),
+            "sslmode": config("COCKROACH_SSLMODE", default="verify-full"),
+            "sslrootcert": config("COCKROACH_SSLROOTCERT", default="/certs/ca.crt"),
         },
     },
 }

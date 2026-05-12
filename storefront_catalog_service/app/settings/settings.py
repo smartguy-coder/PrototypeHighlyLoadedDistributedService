@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     # Local apps
     "apps.users",
     "apps.services",
+    "apps.catalog",
 ]
 
 CORS_ALLOWED_ORIGINS = [

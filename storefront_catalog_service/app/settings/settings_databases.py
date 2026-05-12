@@ -81,4 +81,45 @@ DATABASES = {
             "connect_timeout": 10,
         },
     },
+    # ========================================================================
+    # CockroachDB — distributed database for the catalog (dishes) only
+    # ========================================================================
+    # Routed via core.routers.CatalogRouter:
+    #   * apps.catalog migrations and queries -> this connection
+    #   * everything else -> default (Postgres)
+    #
+    # Run migrations explicitly:
+    #   python manage.py migrate --database=catalog
+    #
+    # Env vars:
+    #   COCKROACH_HOST, COCKROACH_PORT (default 26257)
+    #   COCKROACH_DB, COCKROACH_USER, COCKROACH_PASSWORD
+    #   COCKROACH_SSLMODE (default 'verify-full' for the secure cluster)
+    #   COCKROACH_SSLROOTCERT (path to ca.crt; default '/certs/ca.crt' inside the container)
+    #
+    # Cluster runs in SECURE mode (TLS): Django verifies the server using
+    # ca.crt mounted at /certs/ca.crt, then authenticates with username +
+    # password inside the encrypted channel.
+    # ========================================================================
+    "catalog": {
+        # replicas?
+        "ENGINE": "django_cockroachdb",
+        "NAME": config("COCKROACH_DB", default="catalog"),
+        "USER": config("COCKROACH_USER", default="django"),
+        "PASSWORD": config("COCKROACH_PASSWORD", default=""),
+        "HOST": config("COCKROACH_HOST", default="roach1"),
+        "PORT": config("COCKROACH_PORT", default="26257"),
+        "CONN_MAX_AGE": 600,
+        "CONN_HEALTH_CHECKS": True,
+        "OPTIONS": {
+            "connect_timeout": 10,
+            "sslmode": config("COCKROACH_SSLMODE", default="verify-full"),
+            "sslrootcert": config("COCKROACH_SSLROOTCERT", default="/certs/ca.crt"),
+        },
+    },
 }
+
+# Don't phone home from a learning project.
+DISABLE_COCKROACHDB_TELEMETRY = True
+
+DATABASE_ROUTERS = ["core.routers.CatalogRouter"]

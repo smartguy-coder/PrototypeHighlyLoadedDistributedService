@@ -23,6 +23,8 @@ urlpatterns = [
     path("api/v1/auth/otp/verify/", OTPVerifyView.as_view(), name="otp_verify"),
     # User endpoints
     path("api/v1/user/", include("apps.users.urls")),
+    # Catalog endpoints
+    path("api/v1/catalog/", include("apps.catalog.urls")),
     # API docs
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),

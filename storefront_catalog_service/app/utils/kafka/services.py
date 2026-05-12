@@ -11,12 +11,12 @@ All functions accept only primitives — no Django request objects.
 import logging
 from datetime import datetime
 
-from kafka.producer import KafkaPublisherException
-from kafka.producers import otp_notification_producer
 from prototype_highly_loaded_distributed_service_utils.kafka import (
     NotificationChannel,
     OTPNotificationSchema,
 )
+from utils.kafka.producer import KafkaPublisherException
+from utils.kafka.producers import otp_notification_producer
 
 logger = logging.getLogger(__name__)
 

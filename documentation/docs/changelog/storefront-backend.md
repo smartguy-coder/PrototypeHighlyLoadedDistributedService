@@ -4,6 +4,27 @@ Django REST API for storefront operations — user management, catalog, and orde
 
 **Tech Stack:** Django 6, Django REST Framework, PostgreSQL
 
+## 0.11.0 — 2026-05-02
+
+[:octicons-git-pull-request-16: PR #16](https://github.com/smartguy-coder/PrototypeHighlyLoadedDistributedService/pull/16)
+
+### :material-plus: Added
+
+- add CockRoach DB support
+- implement orjson optimization
+
+---
+
+## 0.10.0 — 2026-05-03
+
+[:octicons-git-pull-request-16: PR #15](https://github.com/smartguy-coder/PrototypeHighlyLoadedDistributedService/pull/15)
+
+### :material-plus: Added
+
+- PostgreSQL backup via databasus
+
+---
+
 ## 0.9.0 — 2026-05-02
 
 [:octicons-git-pull-request-16: PR #14](https://github.com/smartguy-coder/PrototypeHighlyLoadedDistributedService/pull/14)

@@ -5,8 +5,8 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
-from kafka.services import send_otp_notification
 from rest_framework_simplejwt.tokens import RefreshToken
+from utils.kafka.services import send_otp_notification
 
 from apps.users.bl import (
     OTPExpiredError,

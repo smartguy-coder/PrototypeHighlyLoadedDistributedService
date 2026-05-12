@@ -43,6 +43,19 @@ x-kafka-depends-on: &kafka-depends-on
   kafka-3:
     condition: service_healthy
 
+# ---------- CockroachDB ----------
+# Common config for all three nodes. Per-node values (hostname, advertise-addr,
+# ports, volume) stay in each service — these are intentionally distinct.
+#
+# Cluster runs in SECURE mode with TLS certificates:
+#   - Node certs (./certs)         — TLS for inter-node + client connections
+#   - CA cert (./certs/ca.crt)     — clients verify it to trust the cluster
+#   - Root client cert (./certs)   — used by roach-init for admin SQL ops
+# Generate certs with: make cockroach-certs (or `docker compose --profile bootstrap up cert-generator`)
+x-roach-common: &roach-common
+  image: cockroachdb/cockroach:v24.2.0
+  restart: unless-stopped
+
 # ============================================================================
 # Services
 # ============================================================================
@@ -244,6 +257,124 @@ services:
       restart: unless-stopped
 
   # ============================================================================
+  # CockroachDB (3-node distributed cluster) — catalog (dishes) database
+  # ============================================================================
+  # Replication factor 3, raft consensus across nodes. Each node is a SQL
+  # gateway; Django connects to one (roach1) but data is replicated and
+  # auto-rebalanced across all three.
+  #
+  # Ports:
+  #   26257 - SQL (only roach1 exposed to host as 26257)
+  #   8088  - Web UI on roach1 (cluster overview, ranges, replication)
+  #
+  # Init: roach-init runs once, calls `cockroach init`, creates DB+user.
+  # ============================================================================
+
+  # ----------------------------------------------------------------------------
+  # cert-generator — generates TLS certificates for the secure cluster
+  # ----------------------------------------------------------------------------
+  # Profile-gated so it does NOT run on a normal `docker compose up`.
+  # Run explicitly:
+  #   docker compose --profile bootstrap up cert-generator
+  # OR (preferred):
+  #   make cockroach-certs
+  #
+  # Idempotent: skips generation if ./certs/ca.crt already exists.
+  # CA private key is stored separately in ./certs-ca/ (gitignored) so it is
+  # not mounted into long-running containers.
+  # ----------------------------------------------------------------------------
+  cert-generator:
+    image: cockroachdb/cockroach:v24.2.0
+    container_name: cert-generator
+    restart: "no"
+    profiles:
+      - bootstrap
+    volumes:
+      - ./certs:/certs
+      - ./certs-ca:/ca
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      "
+      set -e
+      if [ -f /certs/ca.crt ] && [ -f /certs/node.crt ] && [ -f /certs/client.root.crt ]; then
+        echo 'Certificates already exist in /certs, skipping generation.'
+        echo 'Run `make cockroach-certs-clean` to wipe them and regenerate.'
+        exit 0
+      fi
+      echo 'Generating CockroachDB certificates...' &&
+      cockroach cert create-ca --certs-dir=/certs --ca-key=/ca/ca.key &&
+      cockroach cert create-node roach1 roach2 roach3 localhost 127.0.0.1 --certs-dir=/certs --ca-key=/ca/ca.key &&
+      cockroach cert create-client root --certs-dir=/certs --ca-key=/ca/ca.key &&
+      chmod 600 /certs/*.key /ca/*.key &&
+      chmod 644 /certs/*.crt &&
+      echo 'Certificates generated successfully in ./certs (CA key in ./certs-ca).'
+      "
+
+  roach1:
+    <<: *roach-common
+    container_name: roach1
+    hostname: roach1
+    command: start --certs-dir=/certs --join=roach1,roach2,roach3 --advertise-addr=roach1
+    ports:
+      - "26257:26257"  # db connection
+      - "8088:8080"  # ui
+    volumes:
+      - ./data/roach1:/cockroach/cockroach-data
+      - ./certs:/certs:ro
+    healthcheck:
+      test: ["CMD", "cockroach", "sql", "--certs-dir=/certs", "--host=roach1", "-e", "SELECT 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  roach2:
+    <<: *roach-common
+    container_name: roach2
+    hostname: roach2
+    command: start --certs-dir=/certs --join=roach1,roach2,roach3 --advertise-addr=roach2
+    volumes:
+      - ./data/roach2:/cockroach/cockroach-data
+      - ./certs:/certs:ro
+
+  roach3:
+    <<: *roach-common
+    container_name: roach3
+    hostname: roach3
+    command: start --certs-dir=/certs --join=roach1,roach2,roach3 --advertise-addr=roach3
+    volumes:
+      - ./data/roach3:/cockroach/cockroach-data
+      - ./certs:/certs:ro
+
+  roach-init:
+    image: cockroachdb/cockroach:v24.2.0
+    container_name: roach-init
+    depends_on:
+      - roach1
+      - roach2
+      - roach3
+    restart: "no"
+    volumes:
+      - ./certs:/certs:ro
+    # Secure cluster: SQL authentication works, so the `django` user is created
+    # WITH PASSWORD. Django connects via TLS (verify-full) using the CA cert,
+    # then authenticates with username + password inside the encrypted channel.
+    environment:
+      COCKROACH_PASSWORD: ${COCKROACH_PASSWORD}
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      "
+      sleep 8 &&
+      cockroach init --certs-dir=/certs --host=roach1 || true &&
+      cockroach sql --certs-dir=/certs --host=roach1 --user=root -e \"
+        CREATE DATABASE IF NOT EXISTS catalog;
+        CREATE USER IF NOT EXISTS django WITH PASSWORD '$COCKROACH_PASSWORD';
+        ALTER USER django WITH PASSWORD '$COCKROACH_PASSWORD';
+        GRANT ALL ON DATABASE catalog TO django;
+      \"
+      "
+
+  # ============================================================================
   # Application Services
   # ============================================================================
 
@@ -272,17 +403,25 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      roach-init:
+        condition: service_completed_successfully
     command: |
       sh -c "
       echo 'Waiting for PgBouncer...' &&
       sleep 5 &&
-      echo 'Running migrations directly against PostgreSQL...' &&
+      echo 'Running Postgres migrations directly against PostgreSQL...' &&
       USE_PGBOUNCER=false uv run python manage.py migrate &&
+      echo 'Running CockroachDB migrations for the catalog app...' &&
+      uv run python manage.py migrate --database=catalog &&
       uv run python manage.py create_kafka_topics --partitions 3 --replication-factor 3 &&
       uv run python manage.py runserver 0.0.0.0:8000
       "
     volumes:
       - ./storefront_catalog_service/app:/app
+      # Mount only the CA cert read-only — Django needs it for sslmode=verify-full.
+      # We deliberately do NOT mount the whole ./certs (which contains node + root
+      # client keys) into the app container — least-privilege.
+      - ./certs/ca.crt:/certs/ca.crt:ro
     env_file:
       - .env
 

@@ -1,0 +1,9 @@
+[project]
+name = "storefront-backoffice"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "django-ninja-extra>=0.31.4",
+]

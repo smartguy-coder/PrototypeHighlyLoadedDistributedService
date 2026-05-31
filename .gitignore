@@ -20,3 +20,8 @@ db.sqlite3
 /pypi_package_utils/dist/
 /pypi_package_utils/prototype_highly_loaded_distributed_service_utils.egg-info/
 /pypi_package_utils/.pytest_cache/
+
+echo "__pycache__/" >> .gitignore
+echo "*.pyc" >> .gitignore
+
+trash.py

@@ -14,6 +14,6 @@ else:
 class DishAdmin(BaseModelAdmin):
     list_display = ("name", "restaurant_id", "category", "price", "is_available", "created_at")
     list_filter = ("category", "is_available")
-    search_fields = ("name", "description", "restaurant_id")
+    search_fields = ("name", "description", "=restaurant_id")
     readonly_fields = ("id", "created_at", "updated_at")
     ordering = ("-created_at",)

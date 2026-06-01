@@ -299,6 +299,9 @@ services:
       if [ -f /certs/ca.crt ] && [ -f /certs/node.crt ] && [ -f /certs/client.root.crt ]; then
         echo 'Certificates already exist in /certs, skipping generation.'
         echo 'Run `make cockroach-certs-clean` to wipe them and regenerate.'
+        echo 'Enforcing key permissions on existing certs...'
+        chmod 600 /certs/*.key /ca/*.key 2>/dev/null || true
+        chmod 644 /certs/*.crt
         exit 0
       fi
       echo 'Generating CockroachDB certificates...' &&
@@ -624,6 +627,70 @@ services:
     profiles:
       - ui
       - monitoring
+
+  # ============================================================================
+  # Storefront Backoffice — PostgreSQL (direct connection, no PgBouncer)
+  # ============================================================================
+  postgres_storefront_backoffice:
+    image: postgres:17
+    container_name: postgres_storefront_backoffice
+    hostname: postgres_storefront_backoffice
+    environment:
+      POSTGRES_USER: ${BACKOFFICE_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${BACKOFFICE_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${BACKOFFICE_POSTGRES_DB}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5556:5432"
+    command: >
+      postgres -c max_connections=50
+               -c shared_buffers=128MB
+               -c effective_cache_size=384MB
+               -c maintenance_work_mem=32MB
+               -c checkpoint_completion_target=0.7
+               -c wal_buffers=8MB
+               -c default_statistics_target=100
+               -c listen_addresses='*'
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${BACKOFFICE_POSTGRES_USER} -d ${BACKOFFICE_POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+    volumes:
+      - ./data/postgres_backoffice:/var/lib/postgresql/data
+
+  storefront_backoffice:
+    container_name: storefront_backoffice
+    hostname: storefrontBackoffice
+    labels:
+      logging: vector
+    ports:
+      - "8001:8001"
+    build:
+      dockerfile: Dockerfile
+      context: ./storefront_backoffice
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/admin/login/"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    depends_on:
+      postgres_storefront_backoffice:
+        condition: service_healthy
+    command: |
+      sh -c "
+      echo 'Running Backoffice migrations...' &&
+      uv run python manage.py migrate &&
+      uv run python manage.py runserver 0.0.0.0:8001
+      "
+    volumes:
+      - ./storefront_backoffice/app:/app
+    env_file:
+      - .env
 
 volumes:
   kafka-1-data:

@@ -1,0 +1,12 @@
+[project]
+name = "backoffice"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "django-ninja-extra>=0.31.4",
+    "prototype-highly-loaded-distributed-service-utils==0.2.0",
+    "psycopg[binary]>=3.3.4",
+    "python-decouple>=3.8",
+]
